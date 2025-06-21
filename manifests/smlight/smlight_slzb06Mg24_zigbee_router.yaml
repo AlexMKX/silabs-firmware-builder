@@ -2,7 +2,7 @@ name: SMLIGHT SLZB-06MG24 Zigbee Router
 device: EFR32MG24A020F1024IM40
 base_project: src/zigbee_router
 filename: "{manifest_name}_{ezsp_version}_{baudrate}_{fw_variant}"
-sdk: "simplicity_sdk:2024.6.2"
+sdk: "simplicity_sdk:2025.6.0"
 toolchain: "12.2.1.20221205"
 
 gbl:
@@ -18,7 +18,6 @@ add_components:
       - led0
 
 slcp_defines:
-  SL_ZIGBEE_ADDRESS_TABLE_SIZE: 64
   SL_ZIGBEE_MULTICAST_TABLE_SIZE: 26
   SL_ZIGBEE_ROUTE_TABLE_SIZE: 16
   SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 16
@@ -58,6 +57,7 @@ c_defines:
   SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE: 254
   SL_ZIGBEE_MAX_END_DEVICE_CHILDREN: 64
   SL_ZIGBEE_BINDING_TABLE_SIZE: 32
+  SL_ZIGBEE_ADDRESS_TABLE_SIZE: 64
   SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES: 64
 
   SL_RAIL_UTIL_RSSI_OFFSET: 0
