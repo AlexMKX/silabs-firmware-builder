@@ -11,7 +11,7 @@ gbl:
   baudrate: 921600
   fw_variant: hw_flow
 
-c_defines:  
+c_defines:
   SL_IOSTREAM_USART_VCOM_BAUDRATE: 921600
   SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: usartHwFlowControlCtsAndRts
 
