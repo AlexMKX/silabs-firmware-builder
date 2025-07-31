@@ -1,5 +1,5 @@
 diff --git a/protocol/openthread/platform-abstraction/efr32/radio.c b/protocol/openthread/platform-abstraction/efr32/radio.c
-index 69d644014..49e14c3d8 100644
+index 1a375ffe8..752e55ea8 100644
 --- a/protocol/openthread/platform-abstraction/efr32/radio.c
 +++ b/protocol/openthread/platform-abstraction/efr32/radio.c
 @@ -3453,14 +3453,14 @@ static void processNextRxPacket(otInstance *aInstance)

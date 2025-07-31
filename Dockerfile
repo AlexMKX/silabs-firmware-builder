@@ -22,6 +22,7 @@ RUN \
        ca-certificates \
        libglib2.0-0
 
+# https://jdk.java.net/archive/
 RUN \
     curl -O https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz \
     && tar -C /opt -xf openjdk-21.0.2_linux-x64_bin.tar.gz \
@@ -55,17 +56,17 @@ RUN \
     && tar -C /opt -xf arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz \
     && rm arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz
 
-# Simplicity SDK 2025.6.0
+# Simplicity SDK 2025.6.1
 RUN \
-    curl -o simplicity_sdk_2025.6.0.zip -L https://github.com/SiliconLabs/simplicity_sdk/releases/download/v2025.6.0/simplicity-sdk.zip \
-    && unzip -UU -q -d simplicity_sdk_2025.6.0 simplicity_sdk_2025.6.0.zip \
-    && rm simplicity_sdk_2025.6.0.zip
+    curl -o simplicity_sdk_2025.6.1.zip -L https://github.com/SiliconLabs/simplicity_sdk/releases/download/v2025.6.1/simplicity-sdk.zip \
+    && unzip -UU -q -d simplicity_sdk_2025.6.1 simplicity_sdk_2025.6.1.zip \
+    && rm simplicity_sdk_2025.6.1.zip
 
-# ZCL Advanced Platform (ZAP) v2025.06.09
+# ZCL Advanced Platform (ZAP) v2025.07.24
 RUN \
-    curl -o zap_2025.06.09.zip -L https://github.com/project-chip/zap/releases/download/v2025.06.09/zap-linux-x64.zip \
-    && unzip -q -d /opt/zap zap_2025.06.09.zip \
-    && rm zap_2025.06.09.zip
+    curl -o zap_2025.07.24.zip -L https://github.com/project-chip/zap/releases/download/v2025.07.24/zap-linux-x64.zip \
+    && unzip -q -d /opt/zap zap_2025.07.24.zip \
+    && rm zap_2025.07.24.zip
 ENV STUDIO_ADAPTER_PACK_PATH="/opt/zap"
 
 ARG USERNAME=builder
