@@ -1,5 +1,5 @@
-name: TubesZB MGM24 Zigbee NCP
-device: MGM240PA32VNN
+name: TubesZB BM24 Zigbee NCP
+device: EFR32MG24A420F1536IM48
 base_project: src/zigbee_ncp
 filename: "{manifest_name}_{ezsp_version}_{baudrate}_{fw_variant}"
 sdk: "simplicity_sdk:2025.6.2"
@@ -10,6 +10,12 @@ gbl:
   ezsp_version: dynamic
   baudrate: 115200
   fw_variant: hw_flow
+
+add_components:
+  # Status
+  - id: simple_led
+    instance:
+      - board_activity
 
 slcp_defines:
   SL_ZIGBEE_MULTICAST_TABLE_SIZE: 26
@@ -36,6 +42,10 @@ c_defines:
   SL_IOSTREAM_USART_VCOM_RTS_PIN: 8
 
   SL_IOSTREAM_USART_VCOM_RX_BUFFER_SIZE: 512
+
+  SL_SIMPLE_LED_BOARD_ACTIVITY_POLARITY: SL_SIMPLE_LED_POLARITY_ACTIVE_LOW
+  SL_SIMPLE_LED_BOARD_ACTIVITY_PORT: gpioPortD
+  SL_SIMPLE_LED_BOARD_ACTIVITY_PIN: 2
 
   SL_CLOCK_MANAGER_HFXO_EN: 1
   SL_CLOCK_MANAGER_HFXO_CTUNE: 140
