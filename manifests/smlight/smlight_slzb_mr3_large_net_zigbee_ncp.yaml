@@ -19,6 +19,8 @@ slcp_defines:
   SL_ZIGBEE_MULTICAST_TABLE_SIZE: 26
   SL_ZIGBEE_ROUTE_TABLE_SIZE: 200           # Increased from 16 to 200 (CRITICAL!)
   SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32        # Increased from 16 to 32
+  SL_ZIGBEE_FRAGMENT_WINDOW_SIZE: 8         # MAX (default 1) - 8x faster fragmented messages
+  SL_ZIGBEE_FRAGMENT_DELAY_MS: 0            # No delay between fragment blocks
 
 c_defines:
   SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
@@ -39,7 +41,7 @@ c_defines:
   SL_IOSTREAM_USART_VCOM_RTS_PORT: 0
   SL_IOSTREAM_USART_VCOM_RTS_PIN:  0
 
-  SL_IOSTREAM_USART_VCOM_RX_BUFFER_SIZE: 512  # Increased for high-frequency reports
+  SL_IOSTREAM_USART_VCOM_RX_BUFFER_SIZE: 256  # Increased for high-frequency reports
 
   SL_CLOCK_MANAGER_HFXO_EN: 1
   SL_CLOCK_MANAGER_HFXO_CTUNE: 140
@@ -52,14 +54,7 @@ c_defines:
   SL_ZIGBEE_MAX_END_DEVICE_CHILDREN: 64     # MAX for large networks
   SL_ZIGBEE_BINDING_TABLE_SIZE: 32
   SL_ZIGBEE_ADDRESS_TABLE_SIZE: 200         # Increased from 64 to 200
-  SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES: 32  # Reduced (no spam duplicates)
+  SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES: 64
   SL_ZIGBEE_KEY_TABLE_SIZE: 1
-  
-  # Performance optimization for high-frequency reports (EFR32MG24 has 256KB RAM)
-  SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: 8192   # Increased from 4096 for better throughput
-  SL_ZIGBEE_FRAGMENT_WINDOW_SIZE: 8         # MAX (default 1) - 8x faster fragmented messages
-  SL_ZIGBEE_FRAGMENT_DELAY_MS: 0            # No delay between fragment blocks
-  SL_ZIGBEE_NETWORK_RETRIES: 3              # Network layer retries for unstable routers
-  SL_ZIGBEE_TASK_COUNT: 8                   # Increased from default 6 for parallel processing
 
   SL_RAIL_UTIL_RSSI_OFFSET: 0
