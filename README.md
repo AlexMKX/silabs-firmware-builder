@@ -69,3 +69,17 @@ The bootloader serves as a base for handling the application firmware (flashing,
 
 > [!TIP]
 > With Silabs hardware, as long as the bootloader remains operational, you can usually recover from any kind of application firmware trouble (although it may require opening the case and manually triggering said bootloader). See https://github.com/Nerivec/silabs-firmware-recovery
+
+## Customizing firmware builds (forks)
+
+Beware:
+- This builder uses the yaml `name` property to define some in-firmware constants. These are required for proper recognition in certain circumstances (e.g. Z2M support for `zigbee_router`).
+- Pins & flow control should be set carefully according to the board. The firmware just won't work otherwise.
+- Increasing a config results in more memory allocated (varies based on the config). If too much memory is allocated for a board, the building of the firmware _should_ fail.
+- Use of `FF` for configs (e.g. `0xFF` -`255`- for uint8). These usually have special meaning and may have unintended consequences. Best to use 254 if wanting "max", else verify the actual stack config once flashed: https://github.com/Nerivec/ember-zli/wiki/Stack#get-stack-config-firmware-defaults
+- Some tables may not have any use (or very limited) in specific contexts (e.g. `zigbee_ncp` vs `zigbee_router`, group-heavy network, etc.), hence, changing sizes could result in wasted memory in that area.
+
+
+https://docs.silabs.com/zigbee/latest/sisdk-ezsp-reference-guide/
+
+https://docs.silabs.com/zigbee/latest/sisdk-ezsp-reference-guide/02-emberznet-serial-protocol#configuration-values
