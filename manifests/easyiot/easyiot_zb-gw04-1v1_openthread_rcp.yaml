@@ -8,11 +8,11 @@ toolchain: "12.2.1.20221205"
 gbl:
   fw_type: openthread_rcp
   ot_rcp_version: dynamic
-  baudrate: 921600
+  baudrate: 460800
   fw_variant: sw_flow
 
 c_defines:
-  SL_IOSTREAM_USART_VCOM_BAUDRATE: 921600
+  SL_IOSTREAM_USART_VCOM_BAUDRATE: 460800
   SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: uartFlowControlSoftware
 
   SL_IOSTREAM_USART_VCOM_PERIPHERAL: USART0
