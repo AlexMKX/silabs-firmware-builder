@@ -13,12 +13,12 @@ component:
     instance:
       - vcom
     condition:
-      - device_series_2
+      - device_generic_family_efr32xg21
   - id: iostream_eusart
     instance:
       - vcom
     condition:
-      - device_series_3
+      - device_has_eusart
   - id: zigbee_debug_basic
   - id: zigbee_debug_print
   - id: zigbee_pro_stack
@@ -151,6 +151,12 @@ configuration:
   # custom from zigbee_z3_light & zigbee_gp_z3_light_combo
   - name: SL_IOSTREAM_USART_VCOM_RX_BUFFER_SIZE
     value: 64
+    condition:
+      - iostream_usart
+  - name: SL_IOSTREAM_EUSART_VCOM_RX_BUFFER_SIZE
+    value: 64
+    condition:
+      - iostream_eusart
   - name: SL_ZIGBEE_BROADCAST_TABLE_SIZE
     value: 30
   - name: SL_ZIGBEE_NEIGHBOR_TABLE_SIZE

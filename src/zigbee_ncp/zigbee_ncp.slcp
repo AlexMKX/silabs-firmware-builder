@@ -12,12 +12,12 @@ component:
     instance:
       - vcom
     condition:
-      - device_series_2
+      - device_generic_family_efr32xg21
   - id: iostream_eusart
     instance:
       - vcom
     condition:
-      - device_series_3
+      - device_has_eusart
   - id: zigbee_debug_print
   - id: iostream_vuart
   - id: common_token_manager
@@ -107,6 +107,12 @@ configuration:
   # custom from zigbee_ncp_uart_hw
   - name: SL_IOSTREAM_USART_VCOM_RX_BUFFER_SIZE
     value: 128
+    condition:
+      - iostream_usart
+  - name: SL_IOSTREAM_EUSART_VCOM_RX_BUFFER_SIZE
+    value: 128
+    condition:
+      - iostream_eusart
   - name: SL_ZIGBEE_BROADCAST_TABLE_SIZE
     value: 30
   - name: SL_ZIGBEE_NEIGHBOR_TABLE_SIZE
