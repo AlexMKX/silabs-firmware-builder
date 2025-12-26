@@ -54,8 +54,6 @@ c_defines:
 # Based on SLZB-06MG24 with Silicon Labs recommendations for dense networks
 # See: https://community.silabs.com/s/article/guidelines-for-large-dense-networks-with-emberznet-pro
 # https://docs.silabs.com/zigbee/8.2.1/zigbee-stack-api/configuration#sl-zigbee-fragment-max-window-size
-  SL_IOSTREAM_USART_VCOM_RX_BUFFER_SIZE: 256  # Increased for high-frequency reports
-
   SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT: 255  # MAX for large networks (was 128)
   SL_ZIGBEE_BROADCAST_TABLE_SIZE: 50        # Increased from 30 to 50 (SiLabs recommendation)
   SL_ZIGBEE_NEIGHBOR_TABLE_SIZE: 26         # MAX allowed by SDK (1, 16, or 26)
