@@ -20,8 +20,6 @@ slcp_defines:
   SL_ZIGBEE_MULTICAST_TABLE_SIZE: 26
   SL_ZIGBEE_ROUTE_TABLE_SIZE: 200           # Increased from 16 to 200 (CRITICAL!)
   SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32        # Increased from 16 to 32
-  SL_ZIGBEE_FRAGMENT_WINDOW_SIZE: 8         # MAX (default 1) - 8x faster fragmented messages
-  SL_ZIGBEE_FRAGMENT_DELAY_MS: 0            # No delay between fragment blocks
 
 # end custom configuration
 
