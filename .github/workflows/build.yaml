@@ -6,6 +6,10 @@ on:
       manifest_glob:
         description: "Manifest glob"
         required: false
+      debug:
+        type: boolean
+        description: "Output build data to artifacts"
+        required: false
   release:
     types:
       - published
@@ -18,7 +22,7 @@ jobs:
     name: Run pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
       - name: Install pre-commit
         run: |
@@ -34,7 +38,7 @@ jobs:
     permissions:
       packages: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Log in to the GitHub container registry
         uses: docker/login-action@v3
         with:
@@ -105,7 +109,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - id: set-matrix
         run: |
           echo "matrix=$(find manifests -type f \( -name "${{ inputs.manifest_glob || '*' }}.yaml" -o -name "${{ inputs.manifest_glob || '*' }}.yml" \) -print | sort | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
@@ -121,7 +125,7 @@ jobs:
       matrix:
         manifest: ${{ fromJson(needs.list-manifests.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install SDK extensions
         run: |
@@ -166,6 +170,7 @@ jobs:
             $toolchain_args \
             --manifest "${{ matrix.manifest }}" \
             --build-dir build \
+            --no-clean-build-dir \
             --build-system makefile \
             --output-dir outputs \
             --output gbl \
@@ -184,8 +189,16 @@ jobs:
           curl -fsSL https://deb.nodesource.com/nsolid_setup_deb.sh | bash -s 20
           apt-get install -y nodejs
 
+      - uses: actions/upload-artifact@v6
+        if: ${{ inputs.debug }}
+        with:
+          name: build_dir_${{ steps.build-firmware.outputs.output_basename }}
+          path: build/*
+          compression-level: 9
+          include-hidden-files: true
+
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: firmware-build-${{ steps.build-firmware.outputs.output_basename }}
           path: outputs/*
@@ -201,7 +214,7 @@ jobs:
       contents: write
     steps:
       - name: Download all workflow artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
           merge-multiple: true
