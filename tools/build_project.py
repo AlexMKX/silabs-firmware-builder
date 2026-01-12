@@ -485,11 +485,13 @@ def main():
             value = str(value)
 
             # First try to replace any existing config entries
+            found_existing = False
             for config in output_config:
                 if config["name"] == name:
                     config["value"] = value
-                    break
-            else:
+                    found_existing = True
+
+            if not found_existing:
                 # Otherwise, append it
                 output_config.append({"name": name, "value": value})
 
