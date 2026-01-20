@@ -43,6 +43,8 @@ c_defines:
 
   SL_RAIL_UTIL_RSSI_OFFSET: 0
 
+  SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
+
   # Optional improvements for large networks
   SL_ZIGBEE_ADDRESS_TABLE_SIZE: 250         # Slightly increased from 200
   SL_ZIGBEE_BROADCAST_TABLE_SIZE: 64        # Increased from 50
