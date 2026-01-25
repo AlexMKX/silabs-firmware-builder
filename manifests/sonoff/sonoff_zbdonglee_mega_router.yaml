@@ -1,0 +1,67 @@
+name: SONOFF DONGLE-E Mega Router (Optimized for 200+ devices)
+device: EFR32MG21A020F768IM32
+base_project: src/zigbee_router
+filename: "{manifest_name}_{ezsp_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2025.6.2"
+toolchain: "12.2.1.20221205"
+
+gbl:
+  fw_type: zigbee_router
+  ezsp_version: dynamic
+  baudrate: 115200
+  fw_variant: sw_flow
+
+# Custom configuration for large networks (200+ devices)
+# See: https://community.silabs.com/s/article/guidelines-for-large-dense-networks-with-emberznet-pro
+slcp_defines:
+  SL_ZIGBEE_ROUTE_TABLE_SIZE: 200           # CRITICAL! Default 16 is too small for 200 devices
+  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32        # Increased from 16
+
+add_components:
+  # Status LED
+  - id: simple_led
+    instance:
+      - led0
+  # BOOT button
+  - id: simple_button
+    instance:
+      - btn1
+
+c_defines:
+  SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
+  SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: uartFlowControlSoftware
+
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL: USART0
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL_NO: 0
+
+  SL_IOSTREAM_USART_VCOM_TX_PORT: SL_GPIO_PORT_B
+  SL_IOSTREAM_USART_VCOM_TX_PIN: 1
+
+  SL_IOSTREAM_USART_VCOM_RX_PORT: SL_GPIO_PORT_B
+  SL_IOSTREAM_USART_VCOM_RX_PIN: 0
+
+  SL_IOSTREAM_USART_VCOM_CTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_CTS_PIN: 0
+
+  SL_IOSTREAM_USART_VCOM_RTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_RTS_PIN: 0
+
+  SL_SIMPLE_LED_LED0_POLARITY: SL_SIMPLE_LED_POLARITY_ACTIVE_LOW
+  SL_SIMPLE_LED_LED0_PORT: SL_GPIO_PORT_C
+  SL_SIMPLE_LED_LED0_PIN: 0
+
+  SL_SIMPLE_BUTTON_BTN1_MODE: SL_SIMPLE_BUTTON_MODE_INTERRUPT
+  SL_SIMPLE_BUTTON_BTN1_PORT: SL_GPIO_PORT_A
+  SL_SIMPLE_BUTTON_BTN1_PIN: 0
+
+  SL_CLOCK_MANAGER_HFXO_EN: 1
+  SL_CLOCK_MANAGER_HFXO_CTUNE: 128
+  SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE: SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE_HFXO
+
+  SL_RAIL_UTIL_RSSI_OFFSET: -11
+
+  # Large network optimizations for MG21 (768KB flash, limited RAM)
+  SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: SL_ZIGBEE_LARGE_PACKET_BUFFER_HEAP
+  SL_ZIGBEE_ADDRESS_TABLE_SIZE: 64          # Increased from 32 (MG21 default)
+  SL_ZIGBEE_BROADCAST_TABLE_SIZE: 64        # Increased from 30
+  SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT: 96   # Increased from 64 (MG21 default)
