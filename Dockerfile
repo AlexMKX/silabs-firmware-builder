@@ -1,81 +1,92 @@
-FROM debian:trixie
+# Python virtual environment for the firmware builder script
+FROM debian:trixie-slim AS python-venv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/bin/
+COPY requirements.txt /tmp/
+RUN UV_PYTHON_INSTALL_DIR=/opt/pythons uv venv -p 3.13 /opt/venv --no-cache \
+    && uv pip install --python /opt/venv -r /tmp/requirements.txt
 
-ARG DEBIAN_FRONTEND=noninteractive
+# Install slt and all toolchain packages
+FROM debian:trixie-slim AS slt-toolchain
+ARG TARGETARCH
 
-RUN \
-    apt-get update \
+# Set up slt and conan
+RUN set -e \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        aria2 \
+        ca-certificates \
+        # Required by conan
+        libarchive-tools \
+        bzip2 \
+        unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && aria2c --checksum=sha-256=8c2dd5091c15d5dd7b8fc978a512c49d9b9c5da83d4d0b820cfe983b38ef3612 -o slt.zip \
+        https://www.silabs.com/documents/public/software/slt-cli-1.1.0-linux-x64.zip \
+    && bsdtar -xf slt.zip -C /usr/bin && rm slt.zip \
+    && chmod +x /usr/bin/slt \
+    && slt --non-interactive install conan
+
+# Install toolchain via slt
+RUN set -e \
+    && apt-get update && apt-get install -y --no-install-recommends jq && rm -rf /var/lib/apt/lists/* \
+    && slt --non-interactive install \
+        cmake/3.30.2 \
+        ninja/1.12.1 \
+        commander/1.22.0 \
+        slc-cli/6.0.15 \
+        simplicity-sdk/2025.12.0 \
+        zap/2025.12.02 \
+    # Patch ZAP apack.json to add missing linux.aarch64 executable definitions
+    # Remove once zap is bumped to 2026.x.x
+    && ZAP_PATH="$(slt where zap)" \
+    && jq '.executable["zap:linux.aarch64"]     = {"exe": "zap",     "optional": true} \
+         | .executable["zap-cli:linux.aarch64"] = {"exe": "zap-cli", "optional": true}' \
+        "$ZAP_PATH/apack.json" > /tmp/apack.json && mv /tmp/apack.json "$ZAP_PATH/apack.json" \
+    # Clean up download caches to reduce image size
+    && rm -rf /root/.silabs/slt/installs/archive/*.zip \
+              /root/.silabs/slt/installs/archive/*.tar.* \
+              /root/.silabs/slt/installs/conan/p/*/d/ \
+    # Create stable symlinks and wrappers to make the tools available in PATH
+    && mkdir -p /root/.silabs/slt/bin \
+    && ln -s "$(slt where java21)/jre/bin/java" /root/.silabs/slt/bin/java \
+    && ln -s "$(slt where commander)/commander" /root/.silabs/slt/bin/commander \
+    && ln -s "$(slt where cmake)/bin/cmake" /root/.silabs/slt/bin/cmake \
+    && ln -s "$(slt where ninja)/ninja" /root/.silabs/slt/bin/ninja \
+    # slc needs a wrapper script because it uses $(dirname "$0") to find slc.jar
+    && printf '#!/bin/sh\nexec "%s/slc" "$@"\n' "$(slt where slc-cli)" > /root/.silabs/slt/bin/slc \
+    && chmod +x /root/.silabs/slt/bin/slc
+
+# Final image
+FROM debian:trixie-slim
+ARG TARGETARCH
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Install only runtime packages
+RUN set -e \
+    && apt-get update \
     && apt-get install -y --no-install-recommends \
-       bzip2 \
-       curl \
-       git \
-       git-lfs \
-       jq \
-       yq \
-       libgl1 \
-       make \
-       lsb-release \
-       patch \
-       python3 \
-       python3-ruamel.yaml \
-       unzip \
-       xz-utils \
        ca-certificates \
+       git \
+       jq \
+       libstdc++6 \
+       libgl1 \
+       libpng16-16 \
+       libpcre2-16-0 \
        libglib2.0-0 \
-       openjdk-21-jdk
+    && rm -rf /var/lib/apt/lists/*
 
-# https://jdk.java.net/archive/
-# RUN \
-#     curl -O https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-21.0.2_linux-x64_bin.tar.gz \
-#     && tar -C /opt -xf openjdk-21.0.2_linux-x64_bin.tar.gz \
-#     && rm openjdk-21.0.2_linux-x64_bin.tar.gz
+# Copy from parallel stages
+COPY --from=python-venv /opt/pythons /opt/pythons
+COPY --from=python-venv /opt/venv /opt/venv
+COPY --from=slt-toolchain /usr/bin/slt* /usr/bin/
+COPY --from=slt-toolchain /root/.silabs /root/.silabs
 
-# ENV JAVA_HOME="/opt/jdk-21.0.2"
-# ENV PATH="$PATH:$JAVA_HOME/bin"
+# Signal to the firmware builder script that we are running within Docker
+ENV SILABS_FIRMWARE_BUILD_CONTAINER=1
+ENV HOME=/root
+ENV PATH="$PATH:/root/.silabs/slt/bin"
 
-# Install Simplicity Commander
-RUN \
-    curl -L -O --compressed -H 'User-Agent: Firefox/143' -H 'Accept-Language: *' https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.zip \
-    && unzip -q SimplicityCommander-Linux.zip \
-    && tar -C /opt -xjf SimplicityCommander-Linux/Commander_linux_x86_64_*.tar.bz \
-    && rm -r SimplicityCommander-Linux \
-    && rm SimplicityCommander-Linux.zip
+WORKDIR /repo
 
-ENV PATH="$PATH:/opt/commander"
-
-# Install Silicon Labs Configurator (slc)
-RUN \
-    curl -L -O --compressed -H 'User-Agent: Firefox/143' -H 'Accept-Language: *' https://www.silabs.com/documents/public/software/slc_cli_linux.zip \
-    && unzip -q -d /opt slc_cli_linux.zip \
-    && rm slc_cli_linux.zip
-
-ENV PATH="$PATH:/opt/slc_cli"
-
-# GCC Embedded Toolchain 12.2.rel1 (for Simplicity SDK)
-RUN \
-    curl -O https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/12.2.rel1/binrel/arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz \
-    && tar -C /opt -xf arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz \
-    && rm arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi.tar.xz
-
-# Simplicity SDK 2025.6.2
-RUN \
-    curl -o simplicity_sdk_2025.6.2.zip -L https://github.com/SiliconLabs/simplicity_sdk/releases/download/v2025.6.2/simplicity-sdk.zip \
-    && unzip -UU -q -d simplicity_sdk_2025.6.2 simplicity_sdk_2025.6.2.zip \
-    && rm simplicity_sdk_2025.6.2.zip
-
-# ZCL Advanced Platform (ZAP) v2025.07.24
-RUN \
-    curl -o zap_2025.07.24.zip -L https://github.com/project-chip/zap/releases/download/v2025.07.24/zap-linux-x64.zip \
-    && unzip -q -d /opt/zap zap_2025.07.24.zip \
-    && rm zap_2025.07.24.zip
-ENV STUDIO_ADAPTER_PACK_PATH="/opt/zap"
-
-ARG USERNAME=builder
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
-# Create the user
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME
-
-USER $USERNAME
-WORKDIR /build
+ENTRYPOINT ["/opt/venv/bin/python3", "tools/build_project.py"]

@@ -1,13 +1,12 @@
 name: SMLIGHT SLZB-06MG24 OpenThread RCP
 device: EFR32MG24A020F1024IM40
 base_project: src/openthread_rcp
-filename: "{manifest_name}_{ot_rcp_version}_{baudrate}_{fw_variant}"
-sdk: "simplicity_sdk:2025.6.2"
+filename: "{manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2025.12.0"
 toolchain: "12.2.1.20221205"
 
 gbl:
   fw_type: openthread_rcp
-  ot_rcp_version: dynamic
   baudrate: 921600
   fw_variant: sw_flow
 
@@ -30,8 +29,6 @@ c_defines:
   SL_IOSTREAM_EUSART_VCOM_RTS_PORT: 0
   SL_IOSTREAM_EUSART_VCOM_RTS_PIN: 0
 
-  SL_CLOCK_MANAGER_HFXO_EN: 1
   SL_CLOCK_MANAGER_HFXO_CTUNE: 140
-  SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE: SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE_HFXO
 
   SL_RAIL_UTIL_RSSI_OFFSET: 0

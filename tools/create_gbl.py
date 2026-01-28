@@ -14,6 +14,9 @@ import subprocess
 from ruamel.yaml import YAML
 
 
+yaml = YAML(typ="safe")
+
+
 def parse_c_header_defines(file_content: str) -> dict[str, str]:
     """
     Parses a C header file's `#define`s.
@@ -95,6 +98,14 @@ def find_file_in_parent_dirs(root: pathlib.Path, filename: str) -> pathlib.Path:
         root = root.parent
 
 
+def find_sdk_version(sdk_meta: dict, component: str) -> str:
+    for x in sdk_meta["documentation"]:
+        if x["docset"] == component:
+            return x["version"]
+
+    raise RuntimeError(f"Cannot find version for {component}")
+
+
 def main():
     # Run as a Simplicity Studio post-build step
     parser = argparse.ArgumentParser(
@@ -138,109 +149,37 @@ def main():
     else:
         raise RuntimeError("Cannot determine SDK directory")
 
-    # Parse the main Simplicity Studio project config
-    slcp = YAML(typ="safe").load(slcp_path.read_text())
-
-    gbl_metadata = YAML(typ="safe").load(
-        (project_root / "gbl_metadata.yaml").read_text()
-    )
+    # Parse the main Simplicity Studio SLCS
+    sdk_file = next(gsdk_path.glob("*_sdk.slcs"))
+    sdk_meta = yaml.load(sdk_file.read_text())
+    sdk_version = sdk_meta["sdk_version"]
+    gbl_metadata = yaml.load((project_root / "gbl_metadata.yaml").read_text())
+    fw_type = gbl_metadata.get("fw_type")
 
     # Prepare the GBL metadata
     metadata = {
         "metadata_version": 2,
-        "sdk_version": slcp["sdk"]["version"],
-        "fw_type": gbl_metadata.get("fw_type"),
+        "sdk_version": sdk_version,
+        "fw_type": fw_type,
         "fw_variant": gbl_metadata.get("fw_variant"),
         "baudrate": gbl_metadata.get("baudrate"),
     }
 
-    # Compute the dynamic metadata
-    gbl_dynamic = [k for k, v in gbl_metadata.items() if v == "dynamic"]
-
-    if "ezsp_version" in gbl_dynamic:
-        gbl_dynamic.remove("ezsp_version")
-        zigbee_esf_props = parse_properties_file(
-            (gsdk_path / "protocol/zigbee/esf.properties").read_text()
-        )
-        metadata["ezsp_version"] = zigbee_esf_props["version"][0]
-
-    if "ot_version" in gbl_dynamic:
-        gbl_dynamic.remove("ot_version")
-        ot_esf_props = parse_properties_file(
-            (gsdk_path / "protocol/openthread/esf.properties").read_text()
-        )
-        metadata["ot_version"] = ot_esf_props["version"][0]
-
-    if "ble_version" in gbl_dynamic:
-        gbl_dynamic.remove("ble_version")
-        sl_bt_version_h = parse_c_header_defines(
-            (gsdk_path / "protocol/bluetooth/inc/sl_bt_version.h").read_text()
-        )
-        metadata["ble_version"] = ".".join(
-            [
-                str(sl_bt_version_h["SL_BT_VERSION_MAJOR"]),
-                str(sl_bt_version_h["SL_BT_VERSION_MINOR"]),
-                str(sl_bt_version_h["SL_BT_VERSION_PATCH"]),
-            ]
-        )
-
-    if "cpc_version" in gbl_dynamic:
-        gbl_dynamic.remove("cpc_version")
-        sl_platform_version_h = parse_c_header_defines(
-            (gsdk_path / "platform/common/inc/sl_platform_version.h").read_text()
-        )
-        metadata["cpc_version"] = ".".join(
-            [
-                str(sl_platform_version_h["SL_PLATFORM_MAJOR_VERSION"]),
-                str(sl_platform_version_h["SL_PLATFORM_MINOR_VERSION"]),
-                str(sl_platform_version_h["SL_PLATFORM_PATCH_VERSION"]),
-            ]
-        )
-
-        try:
-            internal_app_config_h = parse_c_header_defines(
-                (project_root / "config/internal_app_config.h").read_text()
-            )
-        except FileNotFoundError:
-            internal_app_config_h = {}
-
-        if "CPC_SECONDARY_APP_VERSION_SUFFIX" in internal_app_config_h:
-            metadata["cpc_version"] += internal_app_config_h[
-                "CPC_SECONDARY_APP_VERSION_SUFFIX"
-            ]
-
-    if "zwave_version" in gbl_dynamic:
-        gbl_dynamic.remove("zwave_version")
-        zwave_props = parse_properties_file(
-            next((gsdk_path / "protocol/z-wave/").glob("*.properties")).read_text()
-        )
-        metadata["zwave_version"] = zwave_props["version"][0]
-
-    if "ot_rcp_version" in gbl_dynamic:
-        gbl_dynamic.remove("ot_rcp_version")
-        openthread_package_info_h = parse_c_header_defines(
+    if fw_type == "zigbee_ncp" or fw_type == "zigbee_router":
+        metadata["fw_version"] = find_sdk_version(sdk_meta, "zigbee")
+    elif fw_type == "openthread_rcp":
+        metadata["fw_version"] = find_sdk_version(sdk_meta, "openthread")
+    elif fw_type == "gecko-bootloader":
+        # not currently in SLCS
+        btl_config_h = parse_c_header_defines(
             (
-                gsdk_path / "protocol/openthread/include/sl_openthread_package_info.h"
+                gsdk_path / "bootloader/platform/bootloader/config/btl_config.h"
             ).read_text()
         )
-        metadata["ot_rcp_version"] = openthread_package_info_h["PACKAGE_VERSION"]
 
-    if "gecko_bootloader_version" in gbl_dynamic:
-        gbl_dynamic.remove("gecko_bootloader_version")
-        btl_config_h = parse_c_header_defines(
-            (gsdk_path / "platform/bootloader/config/btl_config.h").read_text()
+        metadata["fw_version"] = (
+            f"{btl_config_h['BOOTLOADER_VERSION_MAIN_MAJOR']}.{btl_config_h['BOOTLOADER_VERSION_MAIN_MINOR']}.{btl_config_h['BOOTLOADER_VERSION_MAIN_CUSTOMER']}"
         )
-
-        metadata["gecko_bootloader_version"] = ".".join(
-            [
-                str(btl_config_h["BOOTLOADER_VERSION_MAIN_MAJOR"]),
-                str(btl_config_h["BOOTLOADER_VERSION_MAIN_MINOR"]),
-                str(btl_config_h["BOOTLOADER_VERSION_MAIN_CUSTOMER"]),
-            ]
-        )
-
-    if gbl_dynamic:
-        raise ValueError(f"Unknown dynamic metadata: {gbl_dynamic}")
 
     print("Generated GBL metadata:", metadata, flush=True)
 

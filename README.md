@@ -15,7 +15,7 @@ See https://www.zigbee2mqtt.io/guide/adapters/emberznet.html#firmware-flashing
 
 ### Filename convention
 
-`<brand>_<model>_<firmware-type>_<version>_<baudrate>_<flow-control>.gbl`
+`<brand>_<model>_<firmware-type>_<sdk-version>_<version>_<baudrate>_<flow-control>.gbl`
 
 `<model>` may include a more specific configuration, e.g. `<model>-noled` for router builds that disable the LEDs.
 

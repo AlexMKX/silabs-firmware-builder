@@ -32,18 +32,23 @@ jobs:
         run: |
           pre-commit run --show-diff-on-failure --color=always --all-files
 
-  build-container:
-    name: Create build container image
+  check-container:
+    name: Check if container build needed
     runs-on: ubuntu-latest
     permissions:
       packages: write
+    outputs:
+      tag_name: ${{ steps.read-repo-info.outputs.tag_name }}
+      image_name: ${{ steps.read-repo-info.outputs.image_name }}
+      container_name: ${{ steps.read-repo-info.outputs.container_name }}
+      build_image: ${{ steps.read-repo-info.outputs.build_image }}
     steps:
       - uses: actions/checkout@v6
       - name: Log in to the GitHub container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.repository_owner }}
+          username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Read repository information
         id: read-repo-info
@@ -56,7 +61,7 @@ jobs:
             head_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
           fi
 
-          tag_name=$(echo "${{ hashFiles('Dockerfile') }}" | cut -c-16)
+          tag_name=$(echo "${{ hashFiles('Dockerfile', 'requirements.txt') }}" | cut -c-16)
 
           # Default to building a new container under the original repo
           image_name=$head_image
@@ -85,23 +90,45 @@ jobs:
           echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
           echo "image_name=$image_name" >> $GITHUB_OUTPUT
           echo "container_name=${{ env.REGISTRY }}/$image_name:$tag_name" >> $GITHUB_OUTPUT
+
+  build-container:
+    name: Build container
+    needs: [check-container]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        if: needs.check-container.outputs.build_image == 'true'
+      - name: Log in to the GitHub container registry
+        if: needs.check-container.outputs.build_image == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
+        if: needs.check-container.outputs.build_image == 'true'
         uses: docker/setup-buildx-action@v3
-        if: steps.read-repo-info.outputs.build_image == 'true'
+      - name: Free up disk space
+        if: needs.check-container.outputs.build_image == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          df -h
       - name: Build and Push
+        if: needs.check-container.outputs.build_image == 'true'
         uses: docker/build-push-action@v6
-        if: steps.read-repo-info.outputs.build_image == 'true'
         with:
           context: .
           file: Dockerfile
-          tags: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:${{ steps.read-repo-info.outputs.tag_name }}
-          cache-from: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
-          cache-to: ${{ env.REGISTRY }}/${{ steps.read-repo-info.outputs.image_name }}:cache-${{ steps.read-repo-info.outputs.tag_name }}
+          platforms: linux/amd64
+          tags: ${{ needs.check-container.outputs.container_name }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ needs.check-container.outputs.image_name }}:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ needs.check-container.outputs.image_name }}:cache,mode=max
           push: true
-    outputs:
-      tag_name: ${{ steps.read-repo-info.outputs.tag_name }}
-      image_name: ${{ steps.read-repo-info.outputs.image_name }}
-      container_name: ${{ steps.read-repo-info.outputs.container_name }}
 
   list-manifests:
     name: List firmware manifests
@@ -115,11 +142,11 @@ jobs:
           echo "matrix=$(find manifests -type f \( -name "${{ inputs.manifest_glob || '*' }}.yaml" -o -name "${{ inputs.manifest_glob || '*' }}.yml" \) -print | sort | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
 
   build-firmwares:
-    name: Build
-    needs: [list-manifests, build-container]
+    name: Firmware builder
+    needs: [list-manifests, check-container, build-container]
     runs-on: ubuntu-latest
     container:
-      image: ${{ needs.build-container.outputs.container_name }}
+      image: ${{ needs.check-container.outputs.container_name }}
       options: --user root
     strategy:
       matrix:
@@ -127,51 +154,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install SDK extensions
-        run: |
-          # XXX: slc-cli does not actually work when the extensions aren't in the SDK!
-          for sdk in /*_sdk_*; do
-            slc signature trust --sdk "$sdk"
-
-            # ln -s $PWD/gecko_sdk_extensions "$sdk"/extension
-
-            # for ext in "$sdk"/extension/*/; do
-            #   slc signature trust --sdk "$sdk" --extension-path "$ext"
-            # done
-          done
-
       - name: Build firmware
         id: build-firmware
         run: |
           # Fix `fatal: detected dubious ownership in repository at`
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-          # Pass all SDKs as consecutive `--sdk ...` arguments
-          sdk_args=""
-          for sdk_dir in /*_sdk*; do
-            sdk_args="$sdk_args --sdk $sdk_dir"
-
-            for patch in "$PWD/sdk_patches"/*.patch
-            do
-                echo "Patching ${patch}"
-                patch -p1 -d "$sdk_dir" < $patch
-            done
-          done
-
-          # Pass all toolchains as consecutive `--toolchain ...` arguments
-          toolchain_args=""
-          for toolchain_dir in /opt/*arm-none-eabi*; do
-            toolchain_args="$toolchain_args --toolchain $toolchain_dir"
-          done
-
-          # Build it
-          python3 tools/build_project.py \
-            $sdk_args \
-            $toolchain_args \
+          /opt/venv/bin/python3 tools/build_project.py \
             --manifest "${{ matrix.manifest }}" \
             --build-dir build \
-            --no-clean-build-dir \
-            --build-system makefile \
             --output-dir outputs \
             --output gbl \
             --output hex \

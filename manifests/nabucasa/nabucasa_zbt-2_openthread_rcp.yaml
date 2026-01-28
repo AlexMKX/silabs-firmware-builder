@@ -1,13 +1,12 @@
 name: NabuCasa ZBT-2 OpenThread RCP
 device: EFR32MG24A420F1536IM40
 base_project: src/openthread_rcp
-filename: "{manifest_name}_{ot_rcp_version}_{baudrate}_{fw_variant}"
-sdk: "simplicity_sdk:2025.6.2"
+filename: "{manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2025.12.0"
 toolchain: "12.2.1.20221205"
 
 gbl:
   fw_type: openthread_rcp
-  ot_rcp_version: dynamic
   baudrate: 460800
   fw_variant: hw_flow
 
@@ -34,10 +33,8 @@ c_defines:
 
   SL_APPLICATION_PRODUCT_ID: "{0xE9, 0x92, 0x67, 0x94, 0xBB, 0x2C, 0x4E, 0xC8, 0x9F, 0x36, 0xD9, 0xC6, 0x79, 0x4A, 0x81, 0xFB}"
 
-  SL_CLOCK_MANAGER_HFXO_EN: 1
   SL_CLOCK_MANAGER_HFXO_CTUNE: 108
   SL_CLOCK_MANAGER_HFXO_FREQ: 39000000
   SL_CLOCK_MANAGER_HFXO_PRECISION: 10
-  SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE: SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE_HFXO
 
   SL_RAIL_UTIL_RSSI_OFFSET: 0
