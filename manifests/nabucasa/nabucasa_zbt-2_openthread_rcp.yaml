@@ -1,4 +1,4 @@
-name: NabuCasa SkyConnect OpenThread RCP
+name: NabuCasa ZBT-2 OpenThread RCP
 device: EFR32MG24A420F1536IM40
 base_project: src/openthread_rcp
 filename: "{manifest_name}_{ot_rcp_version}_{baudrate}_{fw_variant}"

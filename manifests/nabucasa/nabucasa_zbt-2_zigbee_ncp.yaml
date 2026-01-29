@@ -1,4 +1,4 @@
-name: NabuCasa SkyConnect Zigbee NCP
+name: NabuCasa ZBT-2 Zigbee NCP
 device: EFR32MG24A420F1536IM40
 base_project: src/zigbee_ncp
 filename: "{manifest_name}_{ezsp_version}_{baudrate}_{fw_variant}"
@@ -10,11 +10,6 @@ gbl:
   ezsp_version: dynamic
   baudrate: 460800
   fw_variant: hw_flow
-
-slcp_defines:
-  SL_ZIGBEE_MULTICAST_TABLE_SIZE: 26
-  SL_ZIGBEE_ROUTE_TABLE_SIZE: 16
-  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 16
 
 c_defines:
   SL_IOSTREAM_EUSART_VCOM_BAUDRATE: 460800

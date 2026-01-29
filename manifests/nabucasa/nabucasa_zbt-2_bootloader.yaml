@@ -1,4 +1,4 @@
-name: NabuCasa SkyConnect Bootloader
+name: NabuCasa ZBT-2 Bootloader
 device: EFR32MG24A420F1536IM40
 base_project: src/bootloader
 filename: "{manifest_name}_{gecko_bootloader_version}"
