@@ -1,5 +1,22 @@
 #!/usr/bin/env node
 
+/*
+ * Purpose
+ * - A small, non-interactive helper around the `ember-zli` Node.js package.
+ * - Intended for automation/agents: flashing a `.gbl` to a Silabs NCP and verifying
+ *   EZSP connectivity without going through the interactive `ember-zli` TUI.
+ *
+ * Requirements
+ * - `ember-zli` must be installed and available in PATH (this script locates its
+ *   install root by resolving the `ember-zli` binary).
+ * - A valid adapter port configuration either provided via `--port` or cached in
+ *   `~/ember-zli/conf_port.json`.
+ *
+ * Commands
+ * - dump-stack-config: Connects over EZSP and dumps config/policy/token values.
+ * - flash-gbl: Enters Gecko bootloader, uploads a `.gbl`, then runs it.
+ */
+
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
