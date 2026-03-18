@@ -90,9 +90,6 @@ component:
   - id: zigbee_dynamic_commissioning
     package: simplicity_sdk
     vendor: silabs
-  - id: zigbee_interpan
-    package: simplicity_sdk
-    vendor: silabs
 
 define:
   # - name: SL_ZIGBEE_CUSTOM_MAC_FILTER_TABLE_SIZE
