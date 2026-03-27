@@ -2,6 +2,7 @@
 
 > [!IMPORTANT]
 > Builds here are updated fairly fast after new changes/releases, hence, you can consider them somewhat similar to the difference between Zigbee2MQTT "normal" branch, and dev/edge branch.
+> Builds also purposely focus on the main needs of each firmware type (no cosmetic extras).
 
 This repository contains building tools and firmware releases for the most common ZigBee adapters.
 
