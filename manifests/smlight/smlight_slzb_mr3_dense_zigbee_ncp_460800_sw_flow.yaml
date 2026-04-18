@@ -109,7 +109,13 @@ c_defines:
   # Large network table extensions
   SL_ZIGBEE_ADDRESS_TABLE_SIZE: 250         # xg24 default 64 -> 250 (near-max)
   SL_ZIGBEE_BROADCAST_TABLE_SIZE: 100       # xg24 default 30 -> 100 (Tuya broadcast spam)
-  SL_ZIGBEE_BINDING_TABLE_SIZE: 64          # default 32 -> 64 (TC-side reportable bindings)
+
+  # DISABLED 2026-04-18: bumping SL_ZIGBEE_BINDING_TABLE_SIZE from 32 to 64
+  # suspected of same class of NCP init hang as GP_PROXY. Binding table is
+  # serialized into NVM3 (NVM3KEY_STACK_BINDING_TABLE), and a size mismatch
+  # between what the stack was built with and what is persisted can trap the
+  # stack before ASH is reachable. Keep the SDK default (32).
+  # SL_ZIGBEE_BINDING_TABLE_SIZE: 64          # default 32 -> 64 (TC-side reportable bindings)
 
   # Anti-duplicate spam (Tuya routers). 2025.12.x xg24 default is already 64;
   # lift to 96 for a bit more slack when many Tuyas transmit at once.
