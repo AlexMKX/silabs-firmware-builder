@@ -57,14 +57,13 @@ slcp_defines:
 
 c_defines:
   # ---- Green Power ------------------------------------------------------
-  # Default 5 proxy table slots covers only a few GP devices (Hue dimmers,
-  # Enki remotes, Ikea Tradfri shortcut buttons). Bump to 16 to future-proof.
-  #
-  # NOTE: must be a c_defines (not slcp_defines) override — the symbol lives
-  # in autogen/sl_zigbee_green_power_config.h which is NOT guarded by
-  # `#ifndef`, so a command-line `-D` (what slcp_defines generates) clashes
-  # with the existing #define and the build fails with `-Werror=redefined`.
-  SL_ZIGBEE_GP_PROXY_TABLE_SIZE: 16
+  # DISABLED 2026-04-18: bumping SL_ZIGBEE_GP_PROXY_TABLE_SIZE from 5 to 16
+  # caused the NCP to hang before ASH RSTACK (adapter reset loop in host).
+  # The GP proxy table size is serialized into NVM3 tokens (GP security frame
+  # counter table sizing is derived from it), and changing it across firmware
+  # updates can put the stack into an init path that never reaches the EZSP
+  # layer. Keep the SDK default (5 for zg24).
+  # SL_ZIGBEE_GP_PROXY_TABLE_SIZE: 16
 
   # ---- UART (EUSART @ 460800, software XON/XOFF flow control) -----------
   # SLZB-MR3 PCB does not route CTS/RTS to usable MG24 pins, so SW flow is
