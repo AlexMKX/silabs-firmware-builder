@@ -608,12 +608,18 @@ def main():
             # Values are always strings
             value = str(value)
 
-            # First try to replace any existing config entries
+            # Replace ALL existing entries with the same name (not just the
+            # first one). The base zigbee_ncp.slcp has several entries keyed
+            # on MCU family (e.g. SL_ZIGBEE_DISCOVERY_TABLE_SIZE for xg21,
+            # xg24, xg26). Previously we would only overwrite the first one,
+            # leaving the xg24 entry untouched.
+            found_existing = False
             for config in output_config:
                 if config["name"] == name:
                     config["value"] = value
-                    break
-            else:
+                    found_existing = True
+
+            if not found_existing:
                 # Otherwise, append it
                 output_config.append({"name": name, "value": value})
 
