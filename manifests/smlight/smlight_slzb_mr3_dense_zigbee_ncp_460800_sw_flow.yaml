@@ -55,12 +55,17 @@ slcp_defines:
   # simultaneously (Tuya routers).
   SL_ZIGBEE_RETRY_QUEUE_SIZE: 32
 
+c_defines:
   # ---- Green Power ------------------------------------------------------
   # Default 5 proxy table slots covers only a few GP devices (Hue dimmers,
   # Enki remotes, Ikea Tradfri shortcut buttons). Bump to 16 to future-proof.
+  #
+  # NOTE: must be a c_defines (not slcp_defines) override — the symbol lives
+  # in autogen/sl_zigbee_green_power_config.h which is NOT guarded by
+  # `#ifndef`, so a command-line `-D` (what slcp_defines generates) clashes
+  # with the existing #define and the build fails with `-Werror=redefined`.
   SL_ZIGBEE_GP_PROXY_TABLE_SIZE: 16
 
-c_defines:
   # ---- UART (EUSART @ 460800, software XON/XOFF flow control) -----------
   # SLZB-MR3 PCB does not route CTS/RTS to usable MG24 pins, so SW flow is
   # the only correct option. EUSART is the default on xg24 since sdk 2025.6.2.
