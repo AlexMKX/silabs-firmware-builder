@@ -1,0 +1,118 @@
+name: SMLIGHT SLZB-MR3 Dense Network Zigbee NCP (200+ devices, 460800 sw_flow)
+device: EFR32MG24A020F1024IM40
+base_project: src/zigbee_ncp
+filename: "{manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2025.12.2"
+toolchain: "12.2.1.20221205"
+
+gbl:
+  fw_type: zigbee_ncp
+  baudrate: 460800
+  fw_variant: sw_flow
+
+# -----------------------------------------------------------------------------
+# Custom configuration for dense / large networks (~200 devices, mostly with
+# unreliable Tuya routers).
+#
+# Background (from on-target observations on z2m 2.9.2 + zigbee-herdsman 10.0.5,
+# EmberZNet 9.0.1, EZSP 18 over TCP bridge SLZB-MR3):
+#   - hundreds of ROUTE_ERROR_SOURCE_ROUTE_FAILURE / MANY_TO_ONE_ROUTE_FAILURE
+#     per session, concentrated on Tuya TS011F / TS110E / TS0601 routers.
+#   - LQI median 156 / RSSI median -61 dBm: RF link is healthy.
+#   - 0 ASH / NCP resets across multiple multi-hour sessions: UART/transport OK.
+#   - On-coordinator stack-config dump shows ROUTE_TABLE_SIZE=16 (default);
+#     the concentrator route table is the dominant bottleneck.
+#
+# References:
+#   https://community.silabs.com/s/article/guidelines-for-large-dense-networks-with-emberznet-pro
+#
+# Upstream defaults (xg24, sisdk-2025.12.x) that we INHERIT and rely on:
+#   SL_ZIGBEE_ADDRESS_TABLE_SIZE                  = 64
+#   SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT           = 128
+#   SL_ZIGBEE_MAX_END_DEVICE_CHILDREN             = 64
+#   SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES = 64   (anti-Tuya dup spam)
+#   SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE             = 254  (max for concentrator)
+#   SL_ZIGBEE_KEY_TABLE_SIZE                      = 1
+#   SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE             = LARGE
+#   SL_IOSTREAM_EUSART_VCOM_RX_BUFFER_SIZE        = 128
+# New in 2025.12.x: zigbee_r23_support, zigbee_dynamic_commissioning enabled.
+# -----------------------------------------------------------------------------
+slcp_defines:
+  # Concentrator route table. THIS is the single biggest fix for our log:
+  # default 16 entries vs ~200 device network -> constant route churn and
+  # ROUTE_ERROR_SOURCE_ROUTE_FAILURE storms.
+  SL_ZIGBEE_ROUTE_TABLE_SIZE: 200
+
+  # Allow more parallel route-discovery operations during MTORR / ZDO bursts.
+  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32
+
+configuration:
+  # build_project.py expects configuration as a flat {name: value} dict.
+  # MR3 is always EFR32MG24 (xg24, EUSART), no per-family conditions needed.
+
+  # Bigger broadcast table: MTORR + ZDO LinkStatus + permit-join broadcasts
+  # tend to overlap in dense nets; default 30 leaves no headroom.
+  SL_ZIGBEE_BROADCAST_TABLE_SIZE: 64
+
+  # SDK only accepts 1, 16, or 26 for neighbor table size on concentrator.
+  # 32+ is rejected at compile time. 26 is the maximum supported value.
+  SL_ZIGBEE_NEIGHBOR_TABLE_SIZE: 26
+
+  # Larger TC binding table for outbound reportable bindings to many sensors.
+  # NOTE: TABLE_FULL we observe in z2m logs comes from the *device* side
+  # (e.g. Tuya climate sensors), not the coordinator; this does not fix those,
+  # but gives margin for our own bind-record bookkeeping.
+  SL_ZIGBEE_BINDING_TABLE_SIZE: 64
+
+  # xg24 default is 64; 250 was used on the legacy MR3 manifest. Costs RAM
+  # but EFR32MG24A020F1024 has 256 KB SRAM; fits with HUGE heap.
+  # Reduce to 128 first if the linker complains about RAM.
+  SL_ZIGBEE_ADDRESS_TABLE_SIZE: 250
+
+  # Significantly larger packet pool to absorb traffic bursts from chatty
+  # Tuya devices without SEND_UNICAST_FAILURE under load.
+  SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
+
+  # Override the upstream CTS_RTS default: SLZB-MR3 PCB does not route
+  # CTS/RTS to usable EFR32MG24 pins, so software flow control is the only
+  # valid option. Lives in `configuration:` so the SDK code generator picks
+  # the SOFT-flow driver path (not just a preprocessor override).
+  SL_IOSTREAM_EUSART_VCOM_FLOW_CONTROL_TYPE: SL_IOSTREAM_EUSART_UART_FLOW_CTRL_SOFT
+
+  # Larger UART RX FIFO for 460800 burst headroom. Upstream ships 128; 256
+  # gives comfortable margin when the host stalls briefly.
+  SL_IOSTREAM_EUSART_VCOM_RX_BUFFER_SIZE: 256
+
+c_defines:
+  # ----- UART (EUSART, 460800) -----------------------------------------------
+  # Baudrate and pin mapping are best kept as preprocessor macros (matches
+  # the reference smlight_slzb06Mg24 manifest in this branch). The flow
+  # control TYPE is set in `configuration:` above so SDK code generation
+  # picks the SOFT-flow driver path.
+  SL_IOSTREAM_EUSART_VCOM_BAUDRATE: 460800
+
+  SL_IOSTREAM_EUSART_VCOM_PERIPHERAL: EUSART0
+  SL_IOSTREAM_EUSART_VCOM_PERIPHERAL_NO: 0
+
+  SL_IOSTREAM_EUSART_VCOM_TX_PORT: SL_GPIO_PORT_A
+  SL_IOSTREAM_EUSART_VCOM_TX_PIN: 5
+
+  SL_IOSTREAM_EUSART_VCOM_RX_PORT: SL_GPIO_PORT_A
+  SL_IOSTREAM_EUSART_VCOM_RX_PIN: 6
+
+  # CTS/RTS pins forced to 0 (disabled) to prevent the SDK from claiming a GPIO.
+  SL_IOSTREAM_EUSART_VCOM_CTS_PORT: 0
+  SL_IOSTREAM_EUSART_VCOM_CTS_PIN: 0
+
+  SL_IOSTREAM_EUSART_VCOM_RTS_PORT: 0
+  SL_IOSTREAM_EUSART_VCOM_RTS_PIN: 0
+
+  # ----- Clocking ------------------------------------------------------------
+  # MR3 uses HFXO; CTUNE 140 matches Nerivec slzb06Mg24 reference manifest.
+  # HFXO_EN / DEFAULT_HF_CLOCK_SOURCE are now handled by SDK defaults in
+  # 2025.12.x and no longer need to be overridden.
+  SL_CLOCK_MANAGER_HFXO_CTUNE: 140
+
+  # ----- Radio ---------------------------------------------------------------
+  # No RSSI offset compensation needed for MR3 (matches reference manifest).
+  SL_RAIL_UTIL_RSSI_OFFSET: 0
