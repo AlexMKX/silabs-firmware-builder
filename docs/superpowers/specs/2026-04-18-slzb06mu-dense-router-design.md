@@ -6,8 +6,12 @@ Status: design approved, ready for implementation
 ## Goal
 
 Build a "fat" Zigbee router firmware for SLZB-06MU
-(`EFR32MG21A020F768IM32`, 768 KiB flash / 64 KiB RAM) optimized for a heavy
+(`EFR32MG21A020F768IM32`, 768 KiB flash / 96 KiB RAM) optimized for a heavy
 mesh network of ~150 devices with poorly-behaved nodes (e.g. Tuya).
+
+Confirmed in-situ via the device's own `/ha_info` endpoint:
+`{"model":"SLZB-06MU","zb_hw":"EFR32MG21","zb_flash_size":768,"zb_ram_size":96,
+"sw_version":"v3.2.9","zb_version":20250602,...}`.
 
 The router must be a balanced mesh helper:
 
@@ -23,8 +27,13 @@ The router must be a balanced mesh helper:
   joined; after flashing it must keep its NVM3 join state and rejoin the
   same network automatically.
 - Target SoC is `EFR32MG21` only. Some MG24-class "dense" tweaks (e.g.
-  `HUGE_PACKET_BUFFER_HEAP`, `ROUTE_TABLE_SIZE=200`) do not fit.
-- Flash via the device's existing Wi-Fi bridge (`192.168.88.144`).
+  `HUGE_PACKET_BUFFER_HEAP`, `ROUTE_TABLE_SIZE=200`) do not fit even with
+  96 KiB RAM — MG24 has 256 KiB.
+- Flash via the SLZB-06MU's own web-UI firmware-upload API at
+  `http://192.168.88.144/`. The device is a standalone Wi-Fi router (not
+  a serial gateway), so its TCP UART bridge is closed by design — we
+  drive flashing through `/fileUpload` + `/api2?action=6` instead of
+  `ember-zli`.
 
 ## Strategy
 
@@ -112,10 +121,23 @@ Inherits pin/clock from upstream `smlight_slzb06m_zigbee_router.yaml`:
 3. Add the new manifest.
 4. Commit, push to `origin` — GitHub Actions builds all manifests, including the new one.
 5. Download the GBL artifact (`gh run download`).
-6. Flash through SLZB Wi-Fi UART bridge:
-   `node tools/ember_zli_tool.mjs flash-gbl --gbl <file>.gbl --port tcp://192.168.88.144:6638`
-7. Wait ~30 s for SLZB reboot.
-8. Verify: tail Z2M logs (`/home/alex/Projects/zigbee/45df7312_zigbee2mqtt`)
+6. Flash via the SLZB-06MU web API (no `ember-zli` — TCP UART bridge is
+   closed on this router-mode device):
+
+   a. Upload the GBL into the device's filesystem as `/fw.bin`:
+
+      `curl -F "update=@<file>.gbl" "http://192.168.88.144/fileUpload?customName=/fw.bin"`
+
+   b. Trigger the local-file flash routine:
+
+      `curl "http://192.168.88.144/api2?action=6&zbChipIdx=0&local=1&fwVer=-1&fwType=0&baud=0&fwCh=2"`
+
+   c. Watch progress via Server-Sent Events on `/events`, or by polling
+      `/api2?action=1&param=zbRev` until the Zigbee firmware revision
+      changes from `20250602` to the new build.
+
+7. Wait ~30 s after `zbRev` updates for the EFR32 to reboot and rejoin.
+8. Verify: tail Z2M logs (`/home/alex/Projects/zigbee/45df7312_zigbee2mqtt/zigbee2mqtt/log`)
    and check MQTT `zigbee2mqtt/<router_friendly_name>` `last_seen`.
    Expect the router to rejoin (NVM3 preserved) and start showing
    neighbors.
@@ -124,10 +146,13 @@ Inherits pin/clock from upstream `smlight_slzb06m_zigbee_router.yaml`:
 
 - **Build fails on RAM/flash:** drop `ROUTE_TABLE_SIZE` to 64 first, then
   drop `LARGE_PACKET_BUFFER_HEAP` if still too tight.
-- **Device unresponsive after flash:** enter Gecko bootloader via SLZB
-  web UI (Tools → Zigbee → enter bootloader) or via `ember-zli`
-  bootloader command, then reflash known-good upstream
-  `smlight_slzb06m_zigbee_router_*.gbl` (Nerivec releases).
+- **Device unresponsive after flash:** put the EFR32 into the Gecko
+  bootloader from the web API (`/api2?action=4&cmd=2` = `ZB_BSL`), then
+  re-upload a known-good upstream
+  `smlight_slzb06m_zigbee_router_*.gbl` (Nerivec releases) via the same
+  `/fileUpload` + `/api2?action=6` sequence. As a soft alternative,
+  reset the EFR32 (`/api2?action=4&cmd=1` = `ZB_RST`) or the entire
+  device (`/api2?action=4&cmd=9` = `HARD_RESET`).
 - **NVM3 corrupted (router will not rejoin):** build a MG21 NVM3-clear GBL
   (the existing `EFR32MG24A020F1024IM40_nvm3_clear_*.gbl` in `stick/` is
   for MG24 and will brick MG21 — do not reuse). Plan B only if needed.
