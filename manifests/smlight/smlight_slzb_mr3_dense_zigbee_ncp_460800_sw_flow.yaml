@@ -11,6 +11,19 @@ gbl:
   fw_variant: sw_flow
 
 
+## YOU WILL NEED TO CLEAR NVM3 after flashing. This is safe if you run Zigbee2Mqtt which stores network in config.
+## 1. change the EFR port speed to 115200 in SMLight UI
+## 2. Enter "Flash mode" from SMLight UI
+## 3. Run ember-zli bootloader and do the below: 
+## 3.1 ✔ Path: tcp://YourIP:6638. Use this config? Yes
+## 3.2 ✔ Adapter model SMLight SLZB06mg24
+## 3.3 ✔ Menu Clear NVM3 (https://github.com/Nerivec/silabs-firmware-recovery?tab=readme-ov-file#nvm3-clear)
+## 3.4 ✔ Confirm adapter is: SMLight SLZB06mg24? Yes
+## 3.5 ✔ NVM3 Size (https://github.com/Nerivec/silabs-firmware-recovery?tab=readme-ov-file#nvm3-clear) 32768
+## 3.6 ✔ Confirm NVM3 clearing? (Cannot be undone; will reset the adapter to factory defaults.) Yes
+## 3.7 ✔ Menu Exit bootloader (run firmware)
+
+
 # =============================================================================
 # SMLIGHT SLZB-MR3 Dense Network NCP, EmberZNet 9.0.1 / SDK 2025.12.2
 # =============================================================================
