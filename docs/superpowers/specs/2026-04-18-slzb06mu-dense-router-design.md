@@ -172,3 +172,15 @@ Inherits pin/clock from upstream `smlight_slzb06m_zigbee_router.yaml`:
 3. SLZB-06MU rejoins the existing Zigbee network without manual permit-join.
 4. Router is visible in Z2M with healthy `last_seen`.
 5. No bootloop, no excessive errors in Z2M log relating to this device.
+
+## Implementation log
+
+- 2026-04-18: built via GitHub Actions run 24605558769, GBL = `smlight_slzb06mu_mr3_dense_zigbee_router_2025.12.2_9.0.1_115200_sw_flow.gbl`.
+- Flash via SLZB web API (`POST /fileUpload` + `GET /api2?action=6&zbChipIdx=0&local=1&fwVer=-1&fwType=0&baud=0&fwCh=2`) succeeded (HTTP 200).
+- zbRev transition: 20250602 -> [ZB_FW_unk] (expected: router fw has no EZSP version response).
+- zb_channel changed from 0 to 2 (active channel) confirming firmware running.
+- Device rejoined existing Zigbee network without permit-join.
+- Confirmed in Z2M logs: `ezspIncomingManyToOneRouteRequestHandler source=65430 longId=0x385cfbfffe58226c` — router is actively broadcasting route requests as HIGH_RAM concentrator (every ~90s).
+- Z2M health report: `0x385cfbfffe58226c: leave_count=0, network_address_changes=0`.
+- software_build_id in Z2M: `2025.6.2_AlexMKX`.
+- No errors in Z2M log related to this device.
