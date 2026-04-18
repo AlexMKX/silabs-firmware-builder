@@ -1,0 +1,80 @@
+name: SMLIGHT SLZB-06MU MR3 Dense Zigbee Router (Optimized for ~150-device mesh)
+device: EFR32MG21A020F768IM32
+base_project: src/zigbee_router
+filename: "{manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2025.12.2"
+toolchain: "12.2.1.20221205"
+
+gbl:
+  fw_type: zigbee_router
+  baudrate: 115200
+  fw_variant: sw_flow
+
+# This file is a "dense" sibling of `smlight_slzb06m_zigbee_router.yaml`.
+# Pin/clock/UART/LED are byte-for-byte identical to the stock SMLIGHT
+# SLZB-06M router manifest. The only differences are the `slcp_defines` and
+# the extra `c_defines` block at the bottom that widen Zigbee tables for
+# routers serving very dense meshes (~150 devices).
+#
+# IMPORTANT: stack table sizes (ROUTE_TABLE_SIZE, DISCOVERY_TABLE_SIZE) MUST
+# go in `slcp_defines`. Putting them in `configuration:` does not stick on
+# this codebase — see commit 96aa4d6 in the NCP history
+# ("revert unsupported neighbor table size override").
+
+add_components:
+  # Status LED on PC0 (same as stock SLZB-06M router manifest)
+  - id: simple_led
+    instance:
+      - led0
+
+slcp_defines:
+  # Transit-side widening — biggest single win for a 150-device mesh.
+  SL_ZIGBEE_ROUTE_TABLE_SIZE: 80            # upstream MG21 default: 16
+  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 24        # upstream MG21 default: 16
+
+c_defines:
+  # === Pin/clock/UART/LED (identical to upstream smlight_slzb06m_zigbee_router.yaml) ===
+  SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
+  SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: uartFlowControlSoftware
+
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL: USART0
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL_NO: 0
+
+  SL_IOSTREAM_USART_VCOM_TX_PORT: SL_GPIO_PORT_B
+  SL_IOSTREAM_USART_VCOM_TX_PIN: 1
+
+  SL_IOSTREAM_USART_VCOM_RX_PORT: SL_GPIO_PORT_B
+  SL_IOSTREAM_USART_VCOM_RX_PIN: 0
+
+  SL_IOSTREAM_USART_VCOM_CTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_CTS_PIN: 0
+
+  SL_IOSTREAM_USART_VCOM_RTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_RTS_PIN: 0
+
+  SL_SIMPLE_LED_LED0_POLARITY: SL_SIMPLE_LED_POLARITY_ACTIVE_HIGH
+  SL_SIMPLE_LED_LED0_PORT: SL_GPIO_PORT_C
+  SL_SIMPLE_LED_LED0_PIN: 0
+
+  SL_CLOCK_MANAGER_HFXO_CTUNE: 80
+
+  SL_RAIL_UTIL_RSSI_OFFSET: -11
+
+  # === Dense-router deltas ===
+  # Larger packet buffer heap. NOT `HUGE` — that is sized for MG24/MG26
+  # (1 MiB flash, 256 KiB RAM). LARGE is the most we can afford on MG21
+  # (768 KiB flash, 96 KiB RAM).
+  SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: SL_ZIGBEE_LARGE_PACKET_BUFFER_HEAP
+
+  # Bigger broadcast tracking table — Tuya devices flood broadcasts.
+  # upstream MG21 default: 30
+  SL_ZIGBEE_BROADCAST_TABLE_SIZE: 35
+
+  # Allow several unique APS link keys (per-child) instead of a single one.
+  # upstream MG21 default: 1
+  SL_ZIGBEE_KEY_TABLE_SIZE: 8
+
+  # APS duplicate-rejection table is unset for xg21 in upstream router.slcp
+  # but is 64 for xg24/xg26. Tuya retries badly — we want at least the
+  # xg24 default here.
+  SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES: 64
