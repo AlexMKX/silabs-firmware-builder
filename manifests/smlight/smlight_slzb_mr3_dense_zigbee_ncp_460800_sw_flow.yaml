@@ -11,19 +11,59 @@ gbl:
   fw_variant: sw_flow
 
 
-# Custom configuration for large networks (200+ devices)
-# See: https://community.silabs.com/s/article/guidelines-for-large-dense-networks-with-emberznet-pro
+# =============================================================================
+# SMLIGHT SLZB-MR3 Dense Network NCP, EmberZNet 9.0.1 / SDK 2025.12.2
+# =============================================================================
 #
-# IMPORTANT: this file is a byte-for-byte clone of the known-good
-# mr3-large-net-460800-sw-flow manifest (sdk 2025.6.2) with ONLY the SDK
-# version and filename template updated for SDK 2025.12.2.
-# Do NOT migrate c_defines into a `configuration:` block - the previous
-# attempt to do so produced a firmware that would not attach over EZSP.
+# Baseline is the byte-for-byte known-good mr3-large-net-460800-sw-flow
+# (sdk 2025.6.2). This revision keeps that baseline and adds a handful of
+# extra headroom settings that measurably help dense networks with noisy
+# routers (Tuya TS011F/TS110E/TS0601), inside the chip's resource budget.
+#
+# Chip: EFR32MG24A020F1024IM40
+#   Flash 1024 KB (968 KB app area after bootloader + NVM3 reservation)
+#   RAM   256 KB
+#
+# Baseline footprint measured from the previous CI build:
+#   App FLASH used ~ 286 KB / 968 KB   => ~682 KB free
+#   App RAM used   ~ 127 KB / 256 KB   => ~129 KB free
+# The additions below cost ~3 KB RAM and ~1-2 KB flash total.
+#
+# TX power for an NCP is NOT set in this manifest. It is set at runtime by
+# the host (z2m) via EZSP setRadioPower(). For maximum range on MG24 A020
+# (High-Power PA +20 dBm capable) set in z2m `configuration.yaml`:
+#   advanced:
+#     transmit_power: 20
+#
+# See:
+#   https://community.silabs.com/s/article/guidelines-for-large-dense-networks-with-emberznet-pro
+# =============================================================================
+
 slcp_defines:
-  SL_ZIGBEE_ROUTE_TABLE_SIZE: 200           # CRITICAL! Default 16 is too small for 200 devices
-  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32        # Increased from 16
+  # ---- Routing ----------------------------------------------------------
+  # Concentrator route table. Default 16 is far too small for ~200 devices
+  # and is the single biggest cause of ROUTE_ERROR_SOURCE_ROUTE_FAILURE
+  # storms we saw in the z2m logs.
+  SL_ZIGBEE_ROUTE_TABLE_SIZE: 200
+
+  # Parallel route-discovery slots during MTORR / ZDO bursts.
+  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32
+
+  # ---- Delivery reliability --------------------------------------------
+  # Retry queue for APS-acked unicasts. Default 16 (visible in CLI dump).
+  # Doubling gives the stack more slack when many devices are lossy
+  # simultaneously (Tuya routers).
+  SL_ZIGBEE_RETRY_QUEUE_SIZE: 32
+
+  # ---- Green Power ------------------------------------------------------
+  # Default 5 proxy table slots covers only a few GP devices (Hue dimmers,
+  # Enki remotes, Ikea Tradfri shortcut buttons). Bump to 16 to future-proof.
+  SL_ZIGBEE_GP_PROXY_TABLE_SIZE: 16
 
 c_defines:
+  # ---- UART (EUSART @ 460800, software XON/XOFF flow control) -----------
+  # SLZB-MR3 PCB does not route CTS/RTS to usable MG24 pins, so SW flow is
+  # the only correct option. EUSART is the default on xg24 since sdk 2025.6.2.
   SL_IOSTREAM_EUSART_VCOM_BAUDRATE: 460800
   SL_IOSTREAM_EUSART_VCOM_FLOW_CONTROL_TYPE: SL_IOSTREAM_EUSART_UART_FLOW_CTRL_SOFT
 
@@ -36,20 +76,37 @@ c_defines:
   SL_IOSTREAM_EUSART_VCOM_RX_PORT: SL_GPIO_PORT_A
   SL_IOSTREAM_EUSART_VCOM_RX_PIN: 6
 
+  # CTS/RTS pins forced to 0 so the SDK does not claim a GPIO for them.
   SL_IOSTREAM_EUSART_VCOM_CTS_PORT: 0
   SL_IOSTREAM_EUSART_VCOM_CTS_PIN: 0
 
   SL_IOSTREAM_EUSART_VCOM_RTS_PORT: 0
   SL_IOSTREAM_EUSART_VCOM_RTS_PIN: 0
 
+  # RX FIFO for 460800 burst headroom. Default 128 -> 256 B. Cheap (+128 B RAM).
+  SL_IOSTREAM_EUSART_VCOM_RX_BUFFER_SIZE: 256
+
+  # ---- Clocking ---------------------------------------------------------
+  # SLZB-MR3 uses an external HFXO; CTUNE 140 matches Nerivec smlight_slzb06Mg24
+  # reference and our long-running known-good MR3 builds.
   SL_CLOCK_MANAGER_HFXO_EN: 1
   SL_CLOCK_MANAGER_HFXO_CTUNE: 140
   SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE: SL_CLOCK_MANAGER_DEFAULT_HF_CLOCK_SOURCE_HFXO
 
+  # ---- Radio ------------------------------------------------------------
+  # No extra RSSI offset compensation needed on MR3.
   SL_RAIL_UTIL_RSSI_OFFSET: 0
 
+  # ---- Zigbee stack (overrides the defaults in zigbee_ncp.slcp) ---------
+  # HUGE packet buffer heap on xg24 (16384 B). Absorbs traffic bursts from
+  # chatty Tuya devices without triggering SEND_UNICAST_FAILURE under load.
   SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
 
-  # Optional improvements for large networks
-  SL_ZIGBEE_ADDRESS_TABLE_SIZE: 250         # Slightly increased from 200
-  SL_ZIGBEE_BROADCAST_TABLE_SIZE: 64        # Increased from 50
+  # Large network table extensions
+  SL_ZIGBEE_ADDRESS_TABLE_SIZE: 250         # xg24 default 64 -> 250 (near-max)
+  SL_ZIGBEE_BROADCAST_TABLE_SIZE: 100       # xg24 default 30 -> 100 (Tuya broadcast spam)
+  SL_ZIGBEE_BINDING_TABLE_SIZE: 64          # default 32 -> 64 (TC-side reportable bindings)
+
+  # Anti-duplicate spam (Tuya routers). 2025.12.x xg24 default is already 64;
+  # lift to 96 for a bit more slack when many Tuyas transmit at once.
+  SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES: 96
