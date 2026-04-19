@@ -32,6 +32,48 @@ slcp_defines:
   SL_ZIGBEE_ROUTE_TABLE_SIZE: 80            # upstream MG21 default: 16
   SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 24        # upstream MG21 default: 16
 
+# === Concentrator / source routing suppression ===
+# The stock src/zigbee_router project is derived from the Silabs Z3Router
+# sample and ships with SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR enabled as a
+# HIGH_RAM_CONCENTRATOR. A concentrator periodically broadcasts MTORR
+# (Many-to-One Route Request) and every device in the mesh answers with a
+# Route Record. This is useful for the *traffic-originating* node (the Z2M
+# coordinator), but we have two concentrators fighting for route state and
+# doubling the route-maintenance broadcast load — a pure relay router like
+# ours never sends app-layer unicasts, so the source route table it builds
+# is dead weight.
+#
+# Fix: flip DEFAULT_ROUTER_BEHAVIOR to NONE. When the stack comes up as a
+# router with NONE behavior, sl_zigbee_af_concentrator_stack_status_cb
+# skips the sl_zigbee_set_concentrator() call entirely — no MTORR, no
+# route-record storm. The concentrator plugin stays linked (app.c still
+# compiles and the runtime API remains available via
+# sl_zigbee_af_concentrator_change_router_behavior()), but it is dormant.
+#
+# Timing values (MIN/MAX/THRESHOLD) are bumped to their safety-clamped
+# maxima so that *if* something flips behavior to FULL at runtime, the
+# storm is still minimal. Hard schema limits from the component config
+# wizard (simplicity_sdk 2025.12.2,
+# protocol/zigbee/app/framework/plugin/concentrator/config/concentrator-config.h):
+#   MIN_TIME_BETWEEN_BROADCASTS_SECONDS: <1-60>
+#   MAX_TIME_BETWEEN_BROADCASTS_SECONDS: <30-300>
+#   ROUTE_ERROR_THRESHOLD:              <1-100>
+#   DELIVERY_FAILURE_THRESHOLD:         <1-100>
+# Values outside these ranges fail the slc build validation.
+configuration:
+  # Primary switch: do not start the MTORR cycle on network up.
+  - name: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_DEFAULT_ROUTER_BEHAVIOR
+    value: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_ROUTER_BEHAVIOR_NONE
+  # Safety nets (only matter if runtime flips behavior back to FULL).
+  - name: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_MIN_TIME_BETWEEN_BROADCASTS_SECONDS
+    value: 60
+  - name: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_MAX_TIME_BETWEEN_BROADCASTS_SECONDS
+    value: 300
+  - name: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_ROUTE_ERROR_THRESHOLD
+    value: 100
+  - name: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_DELIVERY_FAILURE_THRESHOLD
+    value: 100
+
 c_defines:
   # === Pin/clock/UART/LED (identical to upstream smlight_slzb06m_zigbee_router.yaml) ===
   SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
