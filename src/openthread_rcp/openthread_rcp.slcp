@@ -3,7 +3,8 @@ label: OpenThread - RCP
 package: openthread
 category: OpenThread Examples
 quality: production
-description: OpenThread RCP firmware. Derived from the `ot-rcp` example Simplicity SDK project.
+description: OpenThread RCP firmware. Derived from the `ot-rcp` example
+  Simplicity SDK project.
 author: Nerivec
 sdk:
   vendor: silabs
@@ -137,8 +138,8 @@ source:
 
 filter:
   - name: Wireless Technology
-    value: [Thread]
+    value: [ Thread ]
   - name: Device Type
-    value: [RCP]
+    value: [ RCP ]
   - name: Project Difficulty
-    value: [Advanced]
+    value: [ Advanced ]
