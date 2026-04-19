@@ -140,8 +140,18 @@ define:
   #   value: 15
   - name: SL_ZIGBEE_MULTICAST_TABLE_SIZE
     value: 26
+  ## xg21
   - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
-    value: 16
+    value: 200
+    condition: [ "device_generic_family_efr32xg21" ]
+  ## xg24
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: [ "device_generic_family_efr32xg24" ]
+  ## xg26
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: [ "device_generic_family_efr32xg26" ]
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 16
 
@@ -292,7 +302,7 @@ configuration:
     condition: [ "device_generic_family_efr32xg21" ]
   ## xg24
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
-    value: 64
+    value: 128
     condition: [ "device_generic_family_efr32xg24" ]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
@@ -305,7 +315,7 @@ configuration:
     condition: [ "device_generic_family_efr32xg24" ]
   ## xg26
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
-    value: 64
+    value: 128
     condition: [ "device_generic_family_efr32xg26" ]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
