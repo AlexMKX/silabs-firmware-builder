@@ -69,6 +69,23 @@ configuration:
   SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_ROUTE_ERROR_THRESHOLD: 100
   SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_DELIVERY_FAILURE_THRESHOLD: 100
 
+  # === Radio TX power ===
+  # EFR32MG21A020 has an integrated PA rated for up to +20 dBm. The base
+  # project pins this at 19 dBm; go to the chip maximum. This value is
+  # used in two places:
+  #   1. sl_zigbee_set_radio_power() just before the active scan during
+  #      network steering (beacon request power).
+  #   2. networkParams.radioTxPower passed to sl_zigbee_join_network(),
+  #      which stores it in the NIB (NVM3) and becomes the steady-state
+  #      TX power for every subsequent frame until a rejoin.
+  # Schema limit from component config wizard (simplicity_sdk 2025.12.2,
+  # protocol/zigbee/app/framework/plugin/network-steering/config/network-steering-config.h):
+  #   SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER: <-8..20>
+  # NOTE: a firmware flash alone does not change the live radio power —
+  # the stack reads radioTxPower from the NIB on startup. A rejoin after
+  # flash re-reads the config default and writes it back to the NIB.
+  SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER: 20
+
 c_defines:
   # === Pin/clock/UART/LED (identical to upstream smlight_slzb06m_zigbee_router.yaml) ===
   SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
