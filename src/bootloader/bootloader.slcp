@@ -16,11 +16,11 @@ toolchain_settings: []
 category: Example|Bootloader
 filter:
   - name: "Device Type"
-    value: [ "NCP" ]
+    value: ["NCP"]
   - name: "Project Difficulty"
-    value: [ "Advanced" ]
+    value: ["Advanced"]
   - name: "MCU"
-    value: [ "Bootloader" ]
+    value: ["Bootloader"]
 
 component:
   - id: bootloader_core

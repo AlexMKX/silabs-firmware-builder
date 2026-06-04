@@ -607,13 +607,15 @@ def main():
         for name, value in input_config.items():
             # Values are always strings
             value = str(value)
+            replaced = False
 
             # First try to replace any existing config entries
             for config in output_config:
                 if config["name"] == name:
                     config["value"] = value
-                    break
-            else:
+                    replaced = True
+
+            if not replaced:
                 # Otherwise, append it
                 output_config.append({"name": name, "value": value})
 

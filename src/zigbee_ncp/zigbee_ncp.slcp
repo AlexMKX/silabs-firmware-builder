@@ -91,6 +91,10 @@ component:
   - id: zigbee_dynamic_commissioning
     package: simplicity_sdk
     vendor: silabs
+  # TODO: requires `zigbee_device_query_service`, which requires `zigbee_concentrator`, which requires AF - not available in NCP...
+  # - id: zigbee_bdb_3dot1_trust_center_extension
+  #   package: simplicity_sdk
+  #   vendor: silabs
 
 define:
   # - name: SL_ZIGBEE_CUSTOM_MAC_FILTER_TABLE_SIZE
@@ -100,27 +104,27 @@ define:
   ## xg21
   - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
     value: 200
-    condition: [ "device_generic_family_efr32xg21" ]
+    condition: ["device_generic_family_efr32xg21"]
   ## xg24
   - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
     value: 254
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   ## xg26
   - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
     value: 254
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
   ## xg21
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 8
-    condition: [ "device_generic_family_efr32xg21" ]
+    condition: ["device_generic_family_efr32xg21"]
   ## xg24
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 16
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   ## xg26
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 16
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
 
 configuration:
   - name: SL_BOARD_ENABLE_VCOM
@@ -188,54 +192,54 @@ configuration:
   ## xg21
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 200
-    condition: [ "device_generic_family_efr32xg21" ]
+    condition: ["device_generic_family_efr32xg21"]
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
     value: 32
-    condition: [ "device_generic_family_efr32xg21" ]
+    condition: ["device_generic_family_efr32xg21"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 64
-    condition: [ "device_generic_family_efr32xg21" ]
+    condition: ["device_generic_family_efr32xg21"]
   - name: SL_ZIGBEE_MAX_END_DEVICE_CHILDREN
     value: 32
-    condition: [ "device_generic_family_efr32xg21" ]
+    condition: ["device_generic_family_efr32xg21"]
   ## xg24
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 254
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
     value: 128
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_MAX_END_DEVICE_CHILDREN
     value: 64
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES
     value: 64
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE
     value: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
-    condition: [ "device_generic_family_efr32xg24" ]
+    condition: ["device_generic_family_efr32xg24"]
   ## xg26
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 254
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
     value: 128
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_MAX_END_DEVICE_CHILDREN
     value: 64
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES
     value: 64
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE
     value: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
-    condition: [ "device_generic_family_efr32xg26" ]
+    condition: ["device_generic_family_efr32xg26"]
 
 source:
   - path: main.c
@@ -243,8 +247,8 @@ source:
 
 filter:
   - name: Wireless Technology
-    value: [ Zigbee ]
+    value: [Zigbee]
   - name: Device Type
-    value: [ NCP ]
+    value: [NCP]
   - name: Project Difficulty
-    value: [ Advanced ]
+    value: [Advanced]

@@ -138,8 +138,8 @@ source:
 
 filter:
   - name: Wireless Technology
-    value: [ Thread ]
+    value: [Thread]
   - name: Device Type
-    value: [ RCP ]
+    value: [RCP]
   - name: Project Difficulty
-    value: [ Advanced ]
+    value: [Advanced]
