@@ -1,0 +1,150 @@
+name: SONOFF DONGLE-E Dense Zigbee Router
+device: EFR32MG21A020F768IM32
+base_project: src/zigbee_router
+filename: "{manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2025.12.3"
+toolchain: "12.2.1.20221205"
+
+gbl:
+  fw_type: zigbee_router
+  baudrate: 115200
+  fw_variant: sw_flow
+
+# This file is the "dense" sibling of `sonoff_zbdonglee_zigbee_router.yaml`.
+#
+# Board profile (pin/clock/UART/LED/button) is byte-identical to the stock
+# ZBDongle-E router manifest — including HFXO CTUNE=128 which is the
+# factory-calibrated value for this hardware. Do NOT change it to 130 or 80
+# (those are SLZB-06M and SLZB-06MU values respectively).
+#
+# Dense deltas are tuned for a stretched ~200-device mesh. The table sizes
+# in `slcp_defines` and extra `c_defines` below widen Zigbee state without
+# blowing the 96 KiB RAM budget of the EFR32MG21A020F768IM32.
+#
+# WHY NOT sonoff_zbdonglee_mega_router.yaml values?
+#   An older "mega" config (ROUTE_TABLE=200, APS_UNICAST=96, ADDRESS_TABLE=64)
+#   caused repeated watchdog reboots. The root cause was O(N) per-packet scans
+#   over the inflated route table; at 200 entries the scan time under Tuya
+#   broadcast storms exceeded the watchdog deadline. This dense-v2 config
+#   deliberately caps ROUTE_TABLE at 100 and leaves ADDRESS_TABLE and
+#   APS_UNICAST at the upstream MG21 defaults (32 and 64 respectively).
+
+add_components:
+  # Status LED on PC0 (ACTIVE_LOW, same as stock ZBDongle-E router manifest)
+  - id: simple_led
+    instance:
+      - led0
+  # Boot/factory-reset button on PA0 (INTERRUPT mode, same as stock manifest)
+  - id: simple_button
+    instance:
+      - btn1
+
+slcp_defines:
+  # Transit-side widening — biggest single win for a 200-device mesh.
+  # MG21 upstream default: 16. Mega used 200 and caused watchdog reboots;
+  # 100 is the safe ceiling for this RAM budget.
+  SL_ZIGBEE_ROUTE_TABLE_SIZE: 100
+  # MG21 upstream default: 16.
+  SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32
+
+# === Concentrator / source routing suppression ===
+# The stock src/zigbee_router project is derived from the Silabs Z3Router
+# sample and ships with SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR enabled as a
+# HIGH_RAM_CONCENTRATOR. A concentrator periodically broadcasts MTORR
+# (Many-to-One Route Request) and every device in the mesh answers with a
+# Route Record. This is useful for the *traffic-originating* node (the Z2M
+# coordinator), but we have two concentrators fighting for route state and
+# doubling the route-maintenance broadcast load — a pure relay router like
+# ours never sends app-layer unicasts, so the source route table it builds
+# is dead weight.
+#
+# Fix: flip DEFAULT_ROUTER_BEHAVIOR to NONE. When the stack comes up as a
+# router with NONE behavior, sl_zigbee_af_concentrator_stack_status_cb
+# skips the sl_zigbee_set_concentrator() call entirely — no MTORR, no
+# route-record storm. The concentrator plugin stays linked (app.c still
+# compiles and the runtime API remains available via
+# sl_zigbee_af_concentrator_change_router_behavior()), but it is dormant.
+#
+# Timing values (MIN/MAX/THRESHOLD) are bumped to their safety-clamped
+# maxima so that *if* something flips behavior to FULL at runtime, the
+# storm is still minimal. Hard schema limits from the component config
+# wizard (simplicity_sdk 2025.12.x,
+# protocol/zigbee/app/framework/plugin/concentrator/config/concentrator-config.h):
+#   MIN_TIME_BETWEEN_BROADCASTS_SECONDS: <1-60>
+#   MAX_TIME_BETWEEN_BROADCASTS_SECONDS: <30-300>
+#   ROUTE_ERROR_THRESHOLD:              <1-100>
+#   DELIVERY_FAILURE_THRESHOLD:         <1-100>
+# Values outside these ranges fail the slc build validation.
+configuration:
+  # Primary switch: do not start the MTORR cycle on network up.
+  SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_DEFAULT_ROUTER_BEHAVIOR: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_ROUTER_BEHAVIOR_NONE
+  # Safety nets (only matter if runtime flips behavior back to FULL).
+  SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_MIN_TIME_BETWEEN_BROADCASTS_SECONDS: 60
+  SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_MAX_TIME_BETWEEN_BROADCASTS_SECONDS: 300
+  SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_ROUTE_ERROR_THRESHOLD: 100
+  SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_DELIVERY_FAILURE_THRESHOLD: 100
+
+  # === Radio TX power ===
+  # EFR32MG21A020 integrated PA rated for up to +20 dBm (chip maximum).
+  # Schema limit (simplicity_sdk 2025.12.x, network-steering-config.h):
+  #   SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER: <-8..20>
+  SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER: 20
+
+  # === Neighbor table ===
+  # MG21 upstream default: 26 (set in base zigbee_router.slcp configuration: section).
+  # Bumped to 28 for a stretched topology with more 1-hop neighbors.
+  # NOTE: the stack may clamp this back to 26 if the base .slcp wins the
+  # merge; that is acceptable — the router still functions correctly at 26.
+  SL_ZIGBEE_NEIGHBOR_TABLE_SIZE: 28
+
+c_defines:
+  # === Pin/clock/UART/LED/button (identical to sonoff_zbdonglee_zigbee_router.yaml) ===
+  SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
+  SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: uartFlowControlSoftware
+
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL: USART0
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL_NO: 0
+
+  SL_IOSTREAM_USART_VCOM_TX_PORT: SL_GPIO_PORT_B
+  SL_IOSTREAM_USART_VCOM_TX_PIN: 1
+
+  SL_IOSTREAM_USART_VCOM_RX_PORT: SL_GPIO_PORT_B
+  SL_IOSTREAM_USART_VCOM_RX_PIN: 0
+
+  SL_IOSTREAM_USART_VCOM_CTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_CTS_PIN: 0
+
+  SL_IOSTREAM_USART_VCOM_RTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_RTS_PIN: 0
+
+  SL_SIMPLE_LED_LED0_POLARITY: SL_SIMPLE_LED_POLARITY_ACTIVE_LOW
+  SL_SIMPLE_LED_LED0_PORT: SL_GPIO_PORT_C
+  SL_SIMPLE_LED_LED0_PIN: 0
+
+  SL_SIMPLE_BUTTON_BTN1_MODE: SL_SIMPLE_BUTTON_MODE_INTERRUPT
+  SL_SIMPLE_BUTTON_BTN1_PORT: SL_GPIO_PORT_A
+  SL_SIMPLE_BUTTON_BTN1_PIN: 0
+
+  # CRITICAL: ZBDongle-E factory HFXO calibration value.
+  # Do NOT use 130 (some other EFR32 boards) or 80 (SLZB-06MU).
+  SL_CLOCK_MANAGER_HFXO_CTUNE: 128
+
+  SL_RAIL_UTIL_RSSI_OFFSET: -11
+
+  # === Dense-router deltas ===
+  # Larger packet buffer heap. NOT `HUGE` — that is sized for MG24/MG26
+  # (1 MiB flash, 256 KiB RAM). LARGE is the safe maximum for MG21
+  # (768 KiB flash, 96 KiB RAM).
+  SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE: SL_ZIGBEE_LARGE_PACKET_BUFFER_HEAP
+
+  # Bigger broadcast tracking table — Tuya devices flood broadcasts.
+  # MG21 upstream default: 30
+  SL_ZIGBEE_BROADCAST_TABLE_SIZE: 35
+
+  # Allow several unique APS link keys (per-child) instead of a single one.
+  # MG21 upstream default: 1
+  SL_ZIGBEE_KEY_TABLE_SIZE: 8
+
+  # APS duplicate-rejection table. Unset for xg21 in upstream router.slcp
+  # but is 64 for xg24/xg26. Tuya retries badly — at least the xg24 default.
+  SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES: 64
