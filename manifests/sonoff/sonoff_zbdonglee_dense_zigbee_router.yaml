@@ -39,6 +39,21 @@ add_components:
     instance:
       - btn1
 
+remove_components:
+  # Remove TC link-key update: after join it requests a TC link key update; a
+  # standard ZHA coordinator (EmberZNet NCP via Z2M) returns status 0x65
+  # (NO_LINK_KEY_RECEIVED), and network-steering then calls sl_zigbee_leave_network()
+  # which drops us off the mesh. A ZHA router never needs CBKE TCLK rotation.
+  - id: zigbee_update_tc_link_key
+    package: simplicity_sdk
+    vendor: silabs
+  # Remove TC keepalive: it polls the coordinator for Keep-Alive cluster 0x0025
+  # (Smart Energy 1.2b). ZHA coordinators don't implement it, so after 3 failed
+  # discoveries the plugin forces a find-and-rejoin, causing a ~60-120s rejoin loop.
+  - id: zigbee_trust_center_keepalive
+    package: simplicity_sdk
+    vendor: silabs
+
 slcp_defines:
   # Transit-side widening — biggest single win for a 200-device mesh.
   # MG21 upstream default: 16. Mega used 200 and caused watchdog reboots;
