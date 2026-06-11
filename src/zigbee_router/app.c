@@ -144,6 +144,15 @@ void sl_zigbee_af_stack_status_cb(sl_status_t status)
  */
 void sl_zigbee_af_main_init_cb(void)
 {
+  // Disable the TC link-key update that network steering performs after join.
+  // On a standard ZHA coordinator (e.g. EmberZNet NCP via Zigbee2MQTT) the TC
+  // replies VERIFY_LINK_KEY_SUCCESS but keeps the same default ZigbeeAlliance09
+  // key, so the "key == default" trigger never clears and the UPDATE_TCLK state
+  // flag drives a repeating sl_zigbee_leave_network() — a ~60-120s rejoin loop.
+  // Setting NO_TCLK_UPDATE prevents network steering from ever setting that flag.
+  sli_zigbee_af_network_steering_options_mask =
+      SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_OPTIONS_NO_TCLK_UPDATE;
+
   sl_zigbee_af_event_init(&commissioning_event, commissioning_event_handler);
 
   #if defined(SL_CATALOG_SIMPLE_BUTTON_PRESENT)
