@@ -91,11 +91,10 @@ configuration:
   SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER: 20
 
   # === Neighbor table ===
-  # MG21 upstream default: 26 (set in base zigbee_router.slcp configuration: section).
-  # Bumped to 28 for a stretched topology with more 1-hop neighbors.
-  # NOTE: the stack may clamp this back to 26 if the base .slcp wins the
-  # merge; that is acceptable — the router still functions correctly at 26.
-  SL_ZIGBEE_NEIGHBOR_TABLE_SIZE: 28
+  # SDK 2025.12.3 enforces a hard #error in sl_zigbee_configuration_defaults.h:
+  # SL_ZIGBEE_NEIGHBOR_TABLE_SIZE must be one of {1, 16, 26}. 26 is the maximum
+  # and matches the MG21 upstream default — this is the stock maximum capacity.
+  SL_ZIGBEE_NEIGHBOR_TABLE_SIZE: 26
 
 c_defines:
   # === Pin/clock/UART/LED/button (identical to sonoff_zbdonglee_zigbee_router.yaml) ===
