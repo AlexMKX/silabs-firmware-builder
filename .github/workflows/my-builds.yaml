@@ -1,0 +1,191 @@
+name: My builds
+
+# Manual-only trigger. Pre-commit is skipped intentionally — this is a
+# personal curated build, not a gate for the main tree.
+on:
+  workflow_dispatch:
+    inputs:
+      debug:
+        type: boolean
+        description: "Output build data to artifacts"
+        required: false
+      publish_release:
+        type: boolean
+        description: "Publish GBLs to a GitHub Release"
+        required: false
+        default: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  check-container:
+    name: Check if container build needed
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    outputs:
+      tag_name: ${{ steps.read-repo-info.outputs.tag_name }}
+      image_name: ${{ steps.read-repo-info.outputs.image_name }}
+      container_name: ${{ steps.read-repo-info.outputs.container_name }}
+      build_image: ${{ steps.read-repo-info.outputs.build_image }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Log in to the GitHub container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Read repository information
+        id: read-repo-info
+        run: |
+          base_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
+          head_image=$(echo ${{ github.repository }} | awk '{print tolower($0)}')
+
+          tag_name=$(echo "${{ hashFiles('Dockerfile', 'requirements.txt') }}" | cut -c-16)
+
+          # Default to building a new container under this repo
+          image_name=$head_image
+          build_image=true
+
+          if docker manifest inspect ${{ env.REGISTRY }}/$base_image:$tag_name; then
+            image_name=$base_image
+            build_image=false
+          fi
+
+          echo "build_image=$build_image" >> $GITHUB_OUTPUT
+          echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
+          echo "image_name=$image_name" >> $GITHUB_OUTPUT
+          echo "container_name=${{ env.REGISTRY }}/$image_name:$tag_name" >> $GITHUB_OUTPUT
+
+  build-container:
+    name: Build container
+    needs: [check-container]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        if: needs.check-container.outputs.build_image == 'true'
+      - name: Log in to the GitHub container registry
+        if: needs.check-container.outputs.build_image == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        if: needs.check-container.outputs.build_image == 'true'
+        uses: docker/setup-buildx-action@v4
+      - name: Free up disk space
+        if: needs.check-container.outputs.build_image == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          df -h
+      - name: Build and Push
+        if: needs.check-container.outputs.build_image == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          tags: ${{ needs.check-container.outputs.container_name }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ needs.check-container.outputs.image_name }}:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ needs.check-container.outputs.image_name }}:cache,mode=max
+          push: true
+
+  list-manifests:
+    name: List curated firmware manifests
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          # Add/remove firmware paths here — one per line.
+          manifests=$(cat <<'EOF'
+          manifests/sonoff/sonoff_zbdonglee_dense_zigbee_router.yaml
+          EOF
+          )
+          echo "matrix=$(echo "$manifests" | sed '/^[[:space:]]*$/d' | sed 's/^[[:space:]]*//' | jq -R -s -c 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
+
+  build-firmwares:
+    name: Firmware builder
+    needs: [list-manifests, check-container, build-container]
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.check-container.outputs.container_name }}
+      options: --user root
+    strategy:
+      matrix:
+        manifest: ${{ fromJson(needs.list-manifests.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build firmware
+        id: build-firmware
+        run: |
+          # Fix `fatal: detected dubious ownership in repository at`
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+          /opt/venv/bin/python3 tools/build_project.py \
+            --manifest "${{ matrix.manifest }}" \
+            --build-dir build \
+            --output-dir outputs \
+            --output gbl \
+            --output hex \
+            --output out \
+            --repo-owner "$GITHUB_REPOSITORY_OWNER" \
+            --repo-hash $(git rev-parse --short=8 "$GITHUB_SHA")
+
+          # Get the basename of the GBL in `outputs`
+          output_basename=$(basename -- $(basename -- $(ls -1 outputs/*.gbl | head -n 1)) .gbl)
+          echo "output_basename=$output_basename" >> $GITHUB_OUTPUT
+
+      - name: Install node within container (act)
+        if: ${{ env.ACT }}
+        run: |
+          curl -fsSL https://deb.nodesource.com/nsolid_setup_deb.sh | bash -s 20
+          apt-get install -y nodejs
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ inputs.debug }}
+        with:
+          name: build_dir_${{ steps.build-firmware.outputs.output_basename }}
+          path: build/*
+          compression-level: 9
+          include-hidden-files: true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: firmware-build-${{ steps.build-firmware.outputs.output_basename }}
+          path: outputs/*
+          compression-level: 9
+          if-no-files-found: error
+
+  release-assets:
+    name: Upload release assets
+    needs: [build-firmwares]
+    if: inputs.publish_release == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all workflow artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: true
+          pattern: firmware-build-*
+
+      - name: Upload artifacts
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: my-builds-${{ github.run_number }}
+          name: "My builds #${{ github.run_number }}"
+          files: artifacts/*.gbl

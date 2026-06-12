@@ -10,6 +10,12 @@ gbl:
   baudrate: 115200
   fw_variant: sw_flow
 
+zap_config:
+  # Sets the ZCL Basic cluster "sw build id" (softwareBuildID, attr 0x4000).
+  # build_project.py composes it as "{sdk_version}_{suffix}" truncated to 16
+  # bytes, so with SDK 2025.12.3 this becomes "2025.12.3_dense".
+  sw_build_id_suffix: dense
+
 # This file is the "dense" sibling of `sonoff_zbdonglee_zigbee_router.yaml`.
 #
 # Board profile (pin/clock/UART/LED/button) is byte-identical to the stock
@@ -21,13 +27,20 @@ gbl:
 # in `slcp_defines` and extra `c_defines` below widen Zigbee state without
 # blowing the 96 KiB RAM budget of the EFR32MG21A020F768IM32.
 #
-# WHY NOT sonoff_zbdonglee_mega_router.yaml values?
-#   An older "mega" config (ROUTE_TABLE=200, APS_UNICAST=96, ADDRESS_TABLE=64)
-#   caused repeated watchdog reboots. The root cause was O(N) per-packet scans
-#   over the inflated route table; at 200 entries the scan time under Tuya
-#   broadcast storms exceeded the watchdog deadline. This dense-v2 config
-#   deliberately caps ROUTE_TABLE at 100 and leaves ADDRESS_TABLE and
-#   APS_UNICAST at the upstream MG21 defaults (32 and 64 respectively).
+# WHY NOT the older sonoff_zbdonglee_mega_router.yaml values?
+#   The "mega" config (ROUTE_TABLE=200, APS_UNICAST=96, ADDRESS_TABLE=64,
+#   BROADCAST=64, HUGE packet buffer heap) was associated with instability.
+#   NOTE: the exact cause was never captured from a reset-reason log. The
+#   zigbee_router base project ships with the hardware watchdog DISABLED
+#   (SL_LEGACY_HAL_DISABLE_WATCHDOG=1), so a "watchdog reboot" is not the
+#   mechanism. A single O(N) route-table scan is ~microseconds and cannot
+#   stall the CPU. The realistic culprits were (a) an assert/HardFault from
+#   the HUGE (16 KiB) heap malloc on the ~64 KiB usable MG21 RAM, and/or
+#   (b) the TC link-key rejoin loop (fixed separately via NO_TCLK_UPDATE),
+#   which looks like a reboot but is a leave/rejoin. This dense profile uses
+#   the LARGE (8 KiB) heap and keeps ADDRESS_TABLE/APS_UNICAST at MG21
+#   defaults. ROUTE_TABLE is set conservatively (RAM is not the limiter;
+#   value chosen for mesh usefulness, not a hard cap).
 
 add_components:
   # Status LED on PC0 (ACTIVE_LOW, same as stock ZBDongle-E router manifest)
@@ -41,8 +54,8 @@ add_components:
 
 slcp_defines:
   # Transit-side widening — biggest single win for a 200-device mesh.
-  # MG21 upstream default: 16. Mega used 200 and caused watchdog reboots;
-  # 100 is the safe ceiling for this RAM budget.
+  # MG21 default 16; the old mega value of 200 was dropped — see the header
+  # note. 100 is a conservative value; RAM is not the limiter.
   SL_ZIGBEE_ROUTE_TABLE_SIZE: 100
   # MG21 upstream default: 16.
   SL_ZIGBEE_DISCOVERY_TABLE_SIZE: 32
