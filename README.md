@@ -28,7 +28,7 @@ See https://www.zigbee2mqtt.io/guide/adapters/emberznet.html#firmware-flashing
 - `slzbmr1u` => use `slzb06m`
 - `slzbmr2u` => use `slzb06m`
 - `slzbmr3u` => use `slzb06Mg26u`
-- `slzbmr4u` => use `slzb06Mg24`
+- `slzbmr4u` => use `slzb06Mg26`
 - `slzbmr5u` => use `slzb06Mg24`
 
 #### Baudrate

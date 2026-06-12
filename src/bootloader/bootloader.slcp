@@ -3,11 +3,14 @@ package: bootloader
 quality: production
 label: Bootloader - NCP UART XMODEM
 description: >
-  Standalone Bootloader using XMODEM-CRC over UART. The bootloader shows a menu, where an XMODEM transfer can be started by sending ASCII '1', or the application can be started by sending ASCII '2'. This is the recommended UART bootloader for the EmberZNet and Connect protocol stacks.
+  Standalone Bootloader using XMODEM-CRC over UART. The bootloader shows a menu,
+  where an XMODEM transfer can be started by sending ASCII '1', or the
+  application can be started by sending ASCII '2'. This is the recommended UART
+  bootloader for the EmberZNet and Connect protocol stacks.
 sdk:
   vendor: silabs
   id: simplicity_sdk
-  version: 2025.12.2
+  version: 2025.12.3
 toolchain_settings: []
 
 category: Example|Bootloader

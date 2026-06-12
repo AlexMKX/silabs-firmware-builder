@@ -3,12 +3,13 @@ label: Zigbee - Router
 package: zigbee
 category: Zigbee Application
 quality: production
-description: Zigbee Router firmware optimized for Zigbee2MQTT use. Derived from the `zigbee_z4_light` example Simplicity SDK project.
+description: Zigbee Router firmware optimized for Zigbee2MQTT use. Derived from
+  the `zigbee_z4_light` example Simplicity SDK project.
 author: Nerivec
 sdk:
   vendor: silabs
   id: simplicity_sdk
-  version: 2025.12.2
+  version: 2025.12.3
 toolchain_settings: []
 
 sdk_extension:
@@ -139,8 +140,18 @@ define:
   #   value: 15
   - name: SL_ZIGBEE_MULTICAST_TABLE_SIZE
     value: 26
+  ## xg21
   - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
-    value: 16
+    value: 200
+    condition: ["device_generic_family_efr32xg21"]
+  ## xg24
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: ["device_generic_family_efr32xg24"]
+  ## xg26
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 16
 
@@ -266,7 +277,7 @@ configuration:
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 254
   - name: SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_CHANNEL_MASK
-    value: 0x07fff800 # all zigbee channels
+    value: 0x7fff800 # all zigbee channels
   - name: SL_ZIGBEE_AF_PLUGIN_NETWORK_STEERING_RADIO_TX_POWER
     value: 19
   - name: SL_ZIGBEE_AF_PLUGIN_CONCENTRATOR_CONCENTRATOR_TYPE
@@ -291,7 +302,7 @@ configuration:
     condition: ["device_generic_family_efr32xg21"]
   ## xg24
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
-    value: 64
+    value: 128
     condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
@@ -304,7 +315,7 @@ configuration:
     condition: ["device_generic_family_efr32xg24"]
   ## xg26
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
-    value: 64
+    value: 128
     condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128

@@ -3,12 +3,13 @@ label: Zigbee - NCP
 package: zigbee
 category: Zigbee Application
 quality: production
-description: Zigbee NCP firmware optimized for Zigbee2MQTT use. Derived from the `zigbee_ncp_uart_hw` example Simplicity SDK project.
+description: Zigbee NCP firmware optimized for Zigbee2MQTT use. Derived from the
+  `zigbee_ncp_uart_hw` example Simplicity SDK project.
 author: Nerivec
 sdk:
   vendor: silabs
   id: simplicity_sdk
-  version: 2025.12.2
+  version: 2025.12.3
 toolchain_settings: []
 
 component:
@@ -90,14 +91,28 @@ component:
   - id: zigbee_dynamic_commissioning
     package: simplicity_sdk
     vendor: silabs
+  # TODO: requires `zigbee_device_query_service`, which requires `zigbee_concentrator`, which requires AF - not available in NCP...
+  # - id: zigbee_bdb_3dot1_trust_center_extension
+  #   package: simplicity_sdk
+  #   vendor: silabs
 
 define:
   # - name: SL_ZIGBEE_CUSTOM_MAC_FILTER_TABLE_SIZE
   #   value: 15
   - name: SL_ZIGBEE_MULTICAST_TABLE_SIZE
     value: 26
+  ## xg21
   - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
-    value: 16
+    value: 200
+    condition: ["device_generic_family_efr32xg21"]
+  ## xg24
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: ["device_generic_family_efr32xg24"]
+  ## xg26
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: ["device_generic_family_efr32xg26"]
   ## xg21
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 8
@@ -192,7 +207,7 @@ configuration:
     value: 254
     condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
-    value: 64
+    value: 128
     condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
@@ -202,13 +217,16 @@ configuration:
     condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES
     value: 64
+    condition: ["device_generic_family_efr32xg24"]
+  - name: SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE
+    value: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
     condition: ["device_generic_family_efr32xg24"]
   ## xg26
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 254
     condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_ADDRESS_TABLE_SIZE
-    value: 64
+    value: 128
     condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_APS_UNICAST_MESSAGE_COUNT
     value: 128
@@ -218,6 +236,9 @@ configuration:
     condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_APS_DUPLICATE_REJECTION_MAX_ENTRIES
     value: 64
+    condition: ["device_generic_family_efr32xg26"]
+  - name: SL_ZIGBEE_PACKET_BUFFER_HEAP_SIZE
+    value: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
     condition: ["device_generic_family_efr32xg26"]
 
 source:
