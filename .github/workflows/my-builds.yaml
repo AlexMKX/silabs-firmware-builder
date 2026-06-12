@@ -13,7 +13,7 @@ on:
         type: boolean
         description: "Publish GBLs to a GitHub Release"
         required: false
-        default: false
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -120,6 +120,8 @@ jobs:
     container:
       image: ${{ needs.check-container.outputs.container_name }}
       options: --user root
+    permissions:
+      contents: write
     strategy:
       matrix:
         manifest: ${{ fromJson(needs.list-manifests.outputs.matrix) }}
@@ -146,6 +148,21 @@ jobs:
           output_basename=$(basename -- $(basename -- $(ls -1 outputs/*.gbl | head -n 1)) .gbl)
           echo "output_basename=$output_basename" >> $GITHUB_OUTPUT
 
+          # Derive a stable, per-firmware-version release tag:
+          #   output_basename format: {manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}
+          #   We want: {manifest_name}-{sdk_version}
+          #   Example: sonoff_zbdonglee_dense_zigbee_router_2025.12.3_9.0.2_115200_sw_flow
+          #         => sonoff_zbdonglee_dense_zigbee_router-2025.12.3
+          #
+          # Strategy: manifest stem = filename without .yaml extension.
+          # SDK version = the dotted version token that immediately follows the manifest stem in output_basename.
+          manifest_stem=$(basename "${{ matrix.manifest }}" .yaml)
+          # Strip manifest_stem prefix and leading underscore, then take first field (sdk_version)
+          sdk_version=$(echo "$output_basename" | sed "s/^${manifest_stem}_//" | cut -d'_' -f1)
+          release_tag="${manifest_stem}-${sdk_version}"
+          echo "release_tag=$release_tag" >> $GITHUB_OUTPUT
+          echo "release_name=${manifest_stem} ${sdk_version}" >> $GITHUB_OUTPUT
+
       - name: Install node within container (act)
         if: ${{ env.ACT }}
         run: |
@@ -168,24 +185,23 @@ jobs:
           compression-level: 9
           if-no-files-found: error
 
-  release-assets:
-    name: Upload release assets
-    needs: [build-firmwares]
-    if: inputs.publish_release == true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download all workflow artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-          merge-multiple: true
-          pattern: firmware-build-*
-
-      - name: Upload artifacts
+      # Publish GBL to a per-firmware-version release.
+      # Tag format: {manifest_name}-{sdk_version}  e.g. sonoff_zbdonglee_dense_zigbee_router-2025.12.3
+      #
+      # softprops/action-gh-release@v3 is IDEMPOTENT on existing tags:
+      #   - If the tag/release already exists it UPDATES the release body and
+      #     re-uploads (overwrites) any asset with the same filename.
+      #   - Re-running the workflow for the same firmware version therefore
+      #     overwrites the previous GBL in the same release — no conflict.
+      - name: Publish release
+        # inputs.publish_release is a boolean workflow_dispatch input.
+        # When left at its default (true) GitHub Actions passes the string "true".
+        # When explicitly set to false it passes "false".
+        # We skip only when the string value is literally "false".
+        if: ${{ inputs.publish_release != false }}
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: my-builds-${{ github.run_number }}
-          name: "My builds #${{ github.run_number }}"
-          files: artifacts/*.gbl
+          tag_name: ${{ steps.build-firmware.outputs.release_tag }}
+          name: ${{ steps.build-firmware.outputs.release_name }}
+          fail_on_unmatched_files: true
+          files: outputs/*.gbl
